@@ -1,0 +1,36 @@
+{
+  "name": "hh-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for HeadHunter (hh.kz / hh.ru) employer API — vacancies, negotiations, resume search",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "npx tsx src/index.ts",
+    "start:http": "npx tsx src/index.ts --http --port=3400",
+    "build": "tsc",
+    "build:bundle": "esbuild src/index.ts --bundle --platform=node --format=cjs --outfile=dist/bundle.cjs --target=node18 --minify",
+    "dev": "npx tsx --watch src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "express": "^5.2.1",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.28.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT",
+  "author": "Mardan Altynbekov",
+  "keywords": ["hh", "headhunter", "hh.kz", "hh.ru", "mcp", "model-context-protocol", "ats", "hr", "recruiting"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mardanaltynbekov1104/hh-mcp.git"
+  }
+}
