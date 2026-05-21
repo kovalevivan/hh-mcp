@@ -1,6 +1,6 @@
 {
   "name": "hh-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server for HeadHunter (hh.kz / hh.ru) employer API — vacancies, negotiations, resume search",
   "type": "module",
   "main": "src/index.ts",

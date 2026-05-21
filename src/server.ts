@@ -7,9 +7,11 @@ import { employerInfoSchema, employerInfoTool } from "./tools/employer_info.js";
 import { employerVacanciesSchema, employerVacanciesTool } from "./tools/employer_vacancies.js";
 import { employerNegotiationsSchema, employerNegotiationsTool } from "./tools/employer_negotiations.js";
 import { employerResumesSchema, employerResumesTool } from "./tools/employer_resumes.js";
+import { salarySchema, salaryTool } from "./tools/salary.js";
+import { webhooksSchema, webhooksTool } from "./tools/webhooks.js";
 
 export const SERVER_NAME = "hh-mcp";
-export const SERVER_VERSION = "0.1.0";
+export const SERVER_VERSION = "0.1.1";
 
 export function createServer(): McpServer {
   return new McpServer({
@@ -77,7 +79,7 @@ export function registerTools(server: McpServer): void {
 
   server.tool(
     "hh_employer_negotiations",
-    "Отклики/приглашения работодателя: collections, list (по статусу/вакансии), get, messages_list/send, history, move_to_collection (response→consider→hired/discard), view, templates_list, statistics, active_topics, ignore_list, candidate_test_solution.",
+    "Отклики, приглашения, переписка и сорсинг работодателя. Главное: invite (POST /negotiations/phone_interview — пригласить кандидата на свою вакансию из найденного резюме). Также: collections, list, get, mark_read, messages_list/send (старый API, deprecated), history, move_to_collection / change_action (одиночное действие), view, templates_list / message_template_get / mail_templates_list / mail_template_update, preference_order_get/set, statistics (vacancy-level) / statistics_manager, active_topics, ignore_list, candidate_test_solution, test_results.",
     employerNegotiationsSchema.shape,
     { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     wrap("hh_employer_negotiations", employerNegotiationsTool)
@@ -85,9 +87,25 @@ export function registerTools(server: McpServer): void {
 
   server.tool(
     "hh_employer_resumes",
-    "Поиск резюме работодателем (платный): search, get (требует confirm=true — тратит контакт!), views_list, mine_invitations, saved_searches CRUD, available_resume_search_criteria.",
+    "Поиск резюме работодателем (платный) + сорсинг: search, get (требует confirm=true — тратит контакт!), views_list, negotiations_history, saved_searches CRUD (list/get/create/update/delete/move_manager), applicant_comments CRUD (list/add/update/delete — заметки команды о кандидате), mine_invitations, available_resume_search_criteria.",
     employerResumesSchema.shape,
     { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     wrap("hh_employer_resumes", employerResumesTool)
+  );
+
+  server.tool(
+    "hh_salary",
+    "Аналитика зарплат HH: evaluation (оценка для конкретной вакансии по area + professional_role/experience/employee_level), плюс справочники industries/professional_areas/employee_levels/areas. Полезно при создании вакансий и переговорах об оффере.",
+    salarySchema.shape,
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+    wrap("hh_salary", salaryTool)
+  );
+
+  server.tool(
+    "hh_webhooks",
+    "Webhook-подписки работодателя для real-time событий (новый отклик, изменение состояния и т.д.): list, subscribe, update, unsubscribe. Требует публичный HTTPS-URL приёмника (например, hiring-bot на Railway).",
+    webhooksSchema.shape,
+    { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    wrap("hh_webhooks", webhooksTool)
   );
 }

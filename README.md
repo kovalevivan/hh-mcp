@@ -6,17 +6,19 @@ MCP-сервер для HeadHunter API (hh.kz / hh.ru), сфокусирован
 
 ## Что внутри
 
-Семь tools:
+Девять tools:
 
 | Tool | Auth | Что делает |
 |---|---|---|
 | `hh_auth` | OAuth flow | `get_auth_url`, `exchange_code`, `refresh`, `me`, `set_tokens`, `logout`, `status` |
 | `hh_dictionaries` | public | `areas`, `professional_roles`, `industries`, `languages`, `metro`, `dictionaries`, `currencies`, `locales`, `educational_institutions` |
 | `hh_suggests` | public | autocompletion: `positions`, `areas`, `companies`, `skill_set`, `vacancy_search_keyword`, и т.д. |
+| `hh_salary` | public | `evaluation` (оценка зарплаты по area + role + level), словари `industries`/`professional_areas`/`employee_levels`/`areas` |
 | `hh_employer_info` | employer OAuth | `me`, `get`, `managers_list/get`, `addresses_list/get`, `departments`, `vacancy_areas`, `vacancy_branded_templates`, `blacklisted` |
-| `hh_employer_vacancies` | employer OAuth | `active_list`/`archived_list`/`hidden_list`, CRUD, `archive/restore/prolongate/hide/unhide`, drafts CRUD + `draft_publish`, `stats`, плюс публичный `search`/`get`/`similar` |
-| `hh_employer_negotiations` | employer OAuth | `collections`, `list`, `get`, `messages_list/send`, `history`, `move_to_collection`, `view`, `templates_list`, `statistics`, `active_topics`, `ignore_list` |
-| `hh_employer_resumes` | employer OAuth (paid) | `search`, `get` (требует `confirm: true` — тратит контакт!), `views_list`, `mine_invitations`, `saved_searches_*` |
+| `hh_employer_vacancies` | employer OAuth | `active_list`/`archived_list`/`hidden_list`, CRUD, `archive/restore/prolongate/hide/unhide`, drafts CRUD + `draft_publish`/`draft_duplicates`, `stats`, `visitors`, `available_services`, `upgrade_list`, `related`, `prolongation_info`, `disable_auto_publication`, плюс публичный `search`/`get`/`similar` |
+| `hh_employer_negotiations` | employer OAuth | **`invite`** (приглашение кандидата на вакансию), `collections`, `list`, `get`, `mark_read`, `messages_list/send`, `history`, `move_to_collection`/`change_action`, `view`, `templates_list`/`message_template_get`/`mail_templates_list`/`mail_template_update`, `preference_order_get/set`, `statistics`/`statistics_manager`, `active_topics`, `ignore_list`, `candidate_test_solution`/`test_results` |
+| `hh_employer_resumes` | employer OAuth (paid) | `search`, `get` (требует `confirm: true` — тратит контакт!), `views_list`, `negotiations_history`, **saved searches CRUD** (`list/get/create/update/delete/move_manager`), **applicant comments CRUD** (`list/add/update/delete` — заметки команды о кандидате), `mine_invitations`, `available_resume_search_criteria` |
+| `hh_webhooks` | employer OAuth | `list`, `subscribe`, `update`, `unsubscribe` — real-time события (NEW_NEGOTIATION, NEGOTIATION_FEEDBACK и др.). Требует публичный HTTPS-URL приёмника. |
 
 ## Что нужно для запуска
 
@@ -109,6 +111,21 @@ hh_employer_resumes action=search query={"text":"эндокринолог","area
 
 # Открыть резюме (тратит контакт!)
 hh_employer_resumes action=get resume_id=abcdef0123456789 confirm=true
+
+# Пригласить найденного кандидата на свою вакансию (sourcing)
+hh_employer_negotiations action=invite resume_id=abc... vacancy_id=12345678 message="Здравствуйте, посмотрите нашу вакансию — кажется, у нас совпадение по навыкам и зарплате. Можем созвониться завтра в 15:00?"
+
+# Сохранить поисковый запрос на регулярный сорсинг
+hh_employer_resumes action=saved_search_create query={"text":"эндокринолог","area":"160","experience":"between3And6","period":"7"}
+
+# Записать заметку о кандидате (для команды HR)
+hh_employer_resumes action=applicant_comment_add applicant_id=123456789 body={"text":"Очень понравился на скрине, договорились о финальном этапе в пятницу"}
+
+# Подписаться на webhook новых откликов
+hh_webhooks action=subscribe body={"webhook_event":"NEW_NEGOTIATION","url":"https://hiring-bot.example.com/hh/webhook","secret_key":"$(openssl rand -hex 16)"}
+
+# Оценка рыночной зарплаты при создании вакансии
+hh_salary action=evaluation area_id=160 query={"professional_role":["24"],"employee_level":"middle","experience":"between3And6"}
 ```
 
 ## ENV
@@ -127,11 +144,21 @@ hh_employer_resumes action=get resume_id=abcdef0123456789 confirm=true
 
 ## Roadmap (v0.2+)
 
-- Applicant-side tools (резюме соискателя, отклики на чужие вакансии).
-- Webhooks (нужен публичный URL для приёмника).
+- `hh_chats` — новый chat API HH (`/common/chats/*`), который заменяет deprecated `/negotiations/{id}/messages`. CRUD сообщений, файлы, участники, unread-counter.
+- `hh_billing` — `payable_api_method_access`, `payable_api_actions/active` (проверка платных услуг работодателя).
+- Applicant-side tools (резюме соискателя, отклики на чужие вакансии, авто-отклики).
+- Tests dictionary (`/tests`) и привязка тестов к вакансиям.
+- Manager_accounts/mine (управление мульти-аккаунтом менеджера).
+- `clickme/statistics` (рекламные кампании HH).
 - Railway-хостинг + curl-installer + DXT (как у [bitrix24-mcp](https://github.com/mardanaltynbekov1104/bitrix24-mcp)).
 - Тесты на vitest.
 - Авто-генерация типов из `https://api.hh.ru/openapi/specification/public`.
+
+## Changelog
+
+**v0.1.1** — sourcing essentials: `hh_employer_negotiations.invite` (приглашение кандидата на вакансию), saved searches CRUD, applicant comments CRUD, `hh_employer_vacancies.visitors`, новые tools `hh_salary` и `hh_webhooks`. 9 tools, 70+ actions, полное покрытие employer workflow кроме нового chat API.
+
+**v0.1.0** — initial release. 7 tools, employer-side baseline.
 
 ## Связанные проекты
 

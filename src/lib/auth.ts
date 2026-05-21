@@ -21,7 +21,7 @@ const TOKENS_PATH = path.join(TOKENS_DIR, "tokens.json");
 const state: AuthState = {
   authBase: "https://hh.kz",
   apiBase: "https://api.hh.ru",
-  userAgent: "hh-mcp/0.1.0 (+https://github.com/mardanaltynbekov1104/hh-mcp)",
+  userAgent: "hh-mcp/0.1.1 (+https://github.com/mardanaltynbekov1104/hh-mcp)",
   clientId: null,
   clientSecret: null,
   redirectUri: "urn:ietf:wg:oauth:2.0:oob",
@@ -35,7 +35,7 @@ let refreshPromise: Promise<void> | null = null;
 export function initAuth(): void {
   state.authBase = (process.env.HH_AUTH_BASE ?? "https://hh.kz").replace(/\/+$/, "");
   state.apiBase = (process.env.HH_API_BASE ?? "https://api.hh.ru").replace(/\/+$/, "");
-  state.userAgent = process.env.HH_USER_AGENT || "hh-mcp/0.1.0 (+https://github.com/mardanaltynbekov1104/hh-mcp)";
+  state.userAgent = process.env.HH_USER_AGENT || "hh-mcp/0.1.1 (+https://github.com/mardanaltynbekov1104/hh-mcp)";
   state.clientId = process.env.HH_CLIENT_ID || null;
   state.clientSecret = process.env.HH_CLIENT_SECRET || null;
   state.redirectUri = process.env.HH_REDIRECT_URI || "urn:ietf:wg:oauth:2.0:oob";

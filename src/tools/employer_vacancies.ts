@@ -27,6 +27,14 @@ export const employerVacanciesSchema = z.object({
       "draft_publish",
       "stats",
       "available_types",
+      "available_types_for_employer",
+      "visitors",
+      "available_services",
+      "upgrade_list",
+      "related",
+      "prolongation_info",
+      "disable_auto_publication",
+      "draft_duplicates",
     ])
     .describe("Employer vacancies actions"),
   vacancy_id: z.string().optional(),
@@ -175,6 +183,47 @@ export async function employerVacanciesTool(input: EmployerVacanciesInput): Prom
         return ok(await hhRequest("GET", `/vacancies/${input.vacancy_id}/stats`));
       case "available_types":
         return ok(await hhRequest("GET", "/vacancy_conditions"));
+      case "available_types_for_employer": {
+        const employer_id = input.employer_id;
+        if (!employer_id) return fail("employer_id is required");
+        return ok(await hhRequest("GET", `/vacancies/available_types/${employer_id}`));
+      }
+      case "visitors":
+        if (!input.vacancy_id) return fail("vacancy_id is required");
+        return ok(
+          await hhRequest("GET", `/vacancies/${input.vacancy_id}/visitors`, { query: input.query })
+        );
+      case "available_services":
+        if (!input.vacancy_id) return fail("vacancy_id is required");
+        return ok(await hhRequest("GET", `/vacancies/${input.vacancy_id}/available_services`));
+      case "upgrade_list":
+        if (!input.vacancy_id) return fail("vacancy_id is required");
+        return ok(await hhRequest("GET", `/vacancies/${input.vacancy_id}/upgrades`));
+      case "related":
+        if (!input.vacancy_id) return fail("vacancy_id is required");
+        return ok(
+          await hhRequest("GET", `/vacancies/${input.vacancy_id}/related_vacancies`, {
+            query: input.query,
+          })
+        );
+      case "prolongation_info":
+        if (!input.vacancy_id) return fail("vacancy_id is required");
+        return ok(await hhRequest("GET", `/vacancies/${input.vacancy_id}/prolongate`));
+      case "disable_auto_publication":
+        if (!input.vacancy_id) return fail("vacancy_id is required");
+        return ok(
+          (await hhRequest("DELETE", `/vacancies/auto_publication/${input.vacancy_id}`)) ?? {
+            disabled: true,
+          }
+        );
+      case "draft_duplicates":
+        if (!input.body && !input.query) return fail("query or body with draft fields is required");
+        return ok(
+          await hhRequest("POST", "/vacancies/drafts/duplicates", {
+            body: input.body,
+            query: input.query,
+          })
+        );
       default:
         return fail(`unknown action: ${(input as { action: string }).action}`);
     }
