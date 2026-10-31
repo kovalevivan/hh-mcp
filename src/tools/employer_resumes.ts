@@ -36,13 +36,13 @@ export const employerResumesSchema = z.object({
   saved_search_id: z.string().optional(),
   manager_id: z.string().optional().describe("для saved_search_move_manager"),
   query: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .optional()
     .describe(
       "Query params. Для saved_search_create/update — тот же набор фильтров что и для resumes search " +
         "(text, area, professional_role, salary_from, experience, education, age_from/to, gender, ...)"
     ),
-  body: z.record(z.unknown()).optional().describe("body для applicant_comment_add/update"),
+  body: z.record(z.string(), z.unknown()).optional().describe("body для applicant_comment_add/update"),
   confirm: z
     .boolean()
     .optional()
