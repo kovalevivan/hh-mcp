@@ -23,14 +23,19 @@ function buildQuery(query?: Record<string, unknown>): string {
   if (!query) return "";
   const entries = Object.entries(query).flatMap(([k, v]) => {
     if (v === undefined || v === null) return [];
-    if (Array.isArray(v)) return v.map((item) => [k, String(item)] as [string, string]);
+    if (Array.isArray(v))
+      return v.map((item) => [k, String(item)] as [string, string]);
     return [[k, String(v)] as [string, string]];
   });
   if (entries.length === 0) return "";
   return "?" + new URLSearchParams(entries).toString();
 }
 
-async function doFetch(method: Method, path: string, opts: RequestOptions): Promise<Response> {
+async function doFetch(
+  method: Method,
+  path: string,
+  opts: RequestOptions,
+): Promise<Response> {
   const url = `${getApiBase()}${path}${buildQuery(opts.query)}`;
   const headers: Record<string, string> = {
     "User-Agent": getUserAgent(),
@@ -64,13 +69,27 @@ async function doFetch(method: Method, path: string, opts: RequestOptions): Prom
 export async function hhRequest<T = unknown>(
   method: Method,
   path: string,
-  opts: RequestOptions = {}
+  opts: RequestOptions = {},
 ): Promise<T> {
+  const issuedToken = getAccessToken();
   let res = await doFetch(method, path, opts);
-
-  if (res.status === 401 && !opts.skipAuth && hasRefreshToken()) {
+  const forbidden =
+    res.status === 403
+      ? ((await res
+          .clone()
+          .json()
+          .catch(() => null)) as {
+          errors?: Array<{ type?: string; value?: string }>;
+        } | null)
+      : null;
+  const expired =
+    res.status === 401 ||
+    forbidden?.errors?.some(
+      (error) => error.type === "oauth" && error.value === "token_expired",
+    );
+  if (expired && !opts.skipAuth && hasRefreshToken()) {
     try {
-      await refreshAccessToken();
+      if (issuedToken === getAccessToken()) await refreshAccessToken();
     } catch (err) {
       throw new HhApiError({
         status: 401,

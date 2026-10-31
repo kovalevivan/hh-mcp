@@ -20,7 +20,7 @@ export const dictionariesSchema = z.object({
     .describe("Dictionary action — все методы публичные, авторизация не нужна."),
   area_id: z.string().optional().describe("for action=area"),
   city_id: z.string().optional().describe("for action=metro_city"),
-  query: z.record(z.unknown()).optional().describe("optional query params (например text= для educational_institutions)"),
+  query: z.record(z.string(), z.unknown()).optional().describe("optional query params (например text= для educational_institutions)"),
 });
 
 export type DictionariesInput = z.infer<typeof dictionariesSchema>;

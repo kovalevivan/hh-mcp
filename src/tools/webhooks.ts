@@ -10,7 +10,7 @@ export const webhooksSchema = z.object({
     ),
   subscription_id: z.string().optional().describe("для update / unsubscribe"),
   body: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .optional()
     .describe(
       "Subscribe payload: { webhook_event: 'NEW_NEGOTIATION'|'NEGOTIATION_FEEDBACK'|…, url, employer_id?, vacancy_id?, secret_key }"

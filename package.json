@@ -12,9 +12,9 @@
     "dev": "npx tsx --watch src/index.ts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "express": "^5.2.1",
-    "zod": "^3.24.4"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
@@ -28,7 +28,17 @@
   },
   "license": "MIT",
   "author": "Mardan Altynbekov",
-  "keywords": ["hh", "headhunter", "hh.kz", "hh.ru", "mcp", "model-context-protocol", "ats", "hr", "recruiting"],
+  "keywords": [
+    "hh",
+    "headhunter",
+    "hh.kz",
+    "hh.ru",
+    "mcp",
+    "model-context-protocol",
+    "ats",
+    "hr",
+    "recruiting"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/mardanaltynbekov1104/hh-mcp.git"

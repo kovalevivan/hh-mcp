@@ -1,9 +1,18 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
+import os from "node:os";
+import path from "node:path";
 
 import { initAuth } from "./lib/auth.js";
-import { createServer, registerTools, SERVER_NAME, SERVER_VERSION } from "./server.js";
+import {
+  createServer,
+  registerTools,
+  SERVER_NAME,
+  SERVER_VERSION,
+} from "./server.js";
+import { createAdminRouter } from "./admin.js";
+import { createSettingsStore } from "./lib/settings.js";
 
 async function startStdio(): Promise<void> {
   const server = createServer();
@@ -22,6 +31,19 @@ async function startStdio(): Promise<void> {
 async function startHttp(port: number): Promise<void> {
   const app = express();
   const authToken = process.env.MCP_AUTH_TOKEN;
+  if (settingsStore) {
+    if (process.env.HH_ADMIN_TOKEN === authToken)
+      throw new Error("Use distinct administration and MCP access tokens");
+    app.use(
+      "/admin",
+      createAdminRouter({
+        store: settingsStore,
+        token: process.env.HH_ADMIN_TOKEN!,
+        callbackUri: process.env.HH_ADMIN_REDIRECT_URI ?? "",
+        stateTtlMs: Number(process.env.HH_OAUTH_STATE_TTL_MS ?? 600_000),
+      }),
+    );
+  }
 
   if (authToken) {
     app.use((req, res, next) => {
@@ -43,14 +65,18 @@ async function startHttp(port: number): Promise<void> {
     try {
       const server = createServer();
       registerTools(server);
-      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-      transport.onerror = (err) => console.error("[MCP] transport error:", err.message);
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+      });
+      transport.onerror = (err) =>
+        console.error("[MCP] transport error:", err.message);
       await server.connect(transport);
       await transport.handleRequest(req, res);
       await server.close();
     } catch (err) {
       console.error("[MCP] handler error:", (err as Error).message);
-      if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+      if (!res.headersSent)
+        res.status(500).json({ error: "Internal server error" });
     }
   });
 
@@ -66,20 +92,30 @@ async function startHttp(port: number): Promise<void> {
   app.delete("/mcp", (_req, res) => res.status(200).json({ ok: true }));
 
   app.get("/health", (_req, res) =>
-    res.json({ status: "ok", name: SERVER_NAME, version: SERVER_VERSION })
+    res.json({ status: "ok", name: SERVER_NAME, version: SERVER_VERSION }),
   );
 
   app.listen(port, () => {
-    console.error(`${SERVER_NAME} v${SERVER_VERSION} listening on http://localhost:${port}`);
+    console.error(
+      `${SERVER_NAME} v${SERVER_VERSION} listening on http://localhost:${port}`,
+    );
     console.error(`Streamable HTTP: POST http://localhost:${port}/mcp`);
   });
 }
 
-initAuth();
-
 const mode = process.argv.includes("--http") ? "http" : "stdio";
+const settingsStore =
+  mode === "http" && process.env.HH_ADMIN_TOKEN
+    ? createSettingsStore(
+        process.env.HH_DATA_DIR || path.join(os.homedir(), ".hh-mcp"),
+        process.env.HH_CONFIG_KEY ?? "",
+      )
+    : null;
+initAuth(settingsStore?.load(), Boolean(settingsStore));
 const portArg = process.argv.find((a) => a.startsWith("--port="));
-const port = parseInt(process.env.PORT ?? "") || (portArg ? parseInt(portArg.split("=")[1], 10) : 3400);
+const port =
+  parseInt(process.env.PORT ?? "") ||
+  (portArg ? parseInt(portArg.split("=")[1], 10) : 3400);
 
 if (mode === "http") {
   startHttp(port).catch((err) => {

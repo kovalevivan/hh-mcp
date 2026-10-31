@@ -16,7 +16,7 @@ export const salarySchema = z.object({
     ),
   area_id: z.string().optional().describe("регион для evaluation (обязателен)"),
   query: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .optional()
     .describe(
       "Для evaluation: professional_role / employee_level / industry / education / experience и др. (см. /salary_statistics/dictionaries/*)"

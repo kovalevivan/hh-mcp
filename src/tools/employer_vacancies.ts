@@ -41,8 +41,8 @@ export const employerVacanciesSchema = z.object({
   draft_id: z.string().optional(),
   employer_id: z.string().optional().describe("обычно подтягивается из /me, но можно задать вручную"),
   manager_id: z.string().optional(),
-  query: z.record(z.unknown()).optional().describe("query params (text, area, per_page, page, ...)"),
-  body: z.record(z.unknown()).optional().describe("vacancy/draft payload"),
+  query: z.record(z.string(), z.unknown()).optional().describe("query params (text, area, per_page, page, ...)"),
+  body: z.record(z.string(), z.unknown()).optional().describe("vacancy/draft payload"),
 });
 
 export type EmployerVacanciesInput = z.infer<typeof employerVacanciesSchema>;

@@ -1,0 +1,38 @@
+name: hh-mcp
+services:
+  hh-mcp:
+    image: hh-mcp:${HH_MCP_REVISION:?Set the deployed Git commit}
+    build:
+      context: ..
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      PORT: "3400"
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:?Set a random MCP access token}
+      HH_AUTH_BASE: https://hh.ru
+    ports:
+      - "127.0.0.1:3400:3400"
+    volumes:
+      - ./tokens:/home/node/.hh-mcp
+    networks:
+      - harly
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 100
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+networks:
+  harly:
+    external: true
+    name: artdent-harly_default

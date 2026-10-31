@@ -8,25 +8,54 @@ import {
   hasRefreshToken,
   refreshAccessToken,
   setTokens,
+  isAdminManaged,
 } from "../lib/auth.js";
 import { hhRequest } from "../client/hh.js";
 import { ok, fail, failFromError, type ToolContent } from "../lib/result.js";
 
 export const authSchema = z.object({
   action: z
-    .enum(["get_auth_url", "exchange_code", "refresh", "me", "set_tokens", "logout", "status"])
+    .enum([
+      "get_auth_url",
+      "exchange_code",
+      "refresh",
+      "me",
+      "set_tokens",
+      "logout",
+      "status",
+    ])
     .describe("OAuth action"),
-  code: z.string().optional().describe("authorization code from /oauth callback (for exchange_code)"),
+  code: z
+    .string()
+    .optional()
+    .describe("authorization code from /oauth callback (for exchange_code)"),
   state: z.string().optional().describe("optional CSRF state for get_auth_url"),
-  force_login: z.boolean().optional().describe("force re-login on hh side (get_auth_url)"),
-  access_token: z.string().optional().describe("manually set access token (set_tokens)"),
-  refresh_token: z.string().optional().describe("manually set refresh token (set_tokens)"),
+  force_login: z
+    .boolean()
+    .optional()
+    .describe("force re-login on hh side (get_auth_url)"),
+  access_token: z
+    .string()
+    .optional()
+    .describe("manually set access token (set_tokens)"),
+  refresh_token: z
+    .string()
+    .optional()
+    .describe("manually set refresh token (set_tokens)"),
   expires_in: z.number().optional().describe("expires_in seconds (set_tokens)"),
 });
 
 export type AuthInput = z.infer<typeof authSchema>;
+export const managedAuthSchema = authSchema.extend({
+  action: z.enum(["status", "me"]),
+});
 
 export async function authTool(input: AuthInput): Promise<ToolContent> {
+  if (isAdminManaged() && input.action !== "status" && input.action !== "me") {
+    return fail(
+      "Manage this shared HeadHunter account in LibreChat administration",
+    );
+  }
   try {
     switch (input.action) {
       case "status":
@@ -36,7 +65,10 @@ export async function authTool(input: AuthInput): Promise<ToolContent> {
           redirect_uri: getRedirectUri(),
         });
       case "get_auth_url": {
-        const url = buildAuthorizeUrl({ state: input.state, force: input.force_login });
+        const url = buildAuthorizeUrl({
+          state: input.state,
+          force: input.force_login,
+        });
         return ok(
           {
             url,
@@ -46,7 +78,7 @@ export async function authTool(input: AuthInput): Promise<ToolContent> {
               "После редиректа скопируй параметр `code` из адресной строки и вызови " +
               "hh_auth action=exchange_code code=<значение>.",
           },
-          "Authorize URL"
+          "Authorize URL",
         );
       }
       case "exchange_code": {
@@ -64,7 +96,11 @@ export async function authTool(input: AuthInput): Promise<ToolContent> {
         return ok({ refreshed: true });
       case "set_tokens":
         if (!input.access_token) return fail("access_token is required");
-        setTokens(input.access_token, input.refresh_token ?? null, input.expires_in ?? null);
+        setTokens(
+          input.access_token,
+          input.refresh_token ?? null,
+          input.expires_in ?? null,
+        );
         return ok({ set: true });
       case "logout":
         clearTokens();

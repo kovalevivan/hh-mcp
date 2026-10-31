@@ -57,8 +57,8 @@ export const employerNegotiationsSchema = z.object({
   employer_id: z.string().optional().describe("employer id (для mail_templates_*; иначе берётся из /me)"),
   manager_id: z.string().optional().describe("для statistics_manager"),
   topic_ids: z.array(z.string()).optional().describe("для mark_read — список topic_id"),
-  query: z.record(z.unknown()).optional(),
-  body: z.record(z.unknown()).optional(),
+  query: z.record(z.string(), z.unknown()).optional(),
+  body: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type EmployerNegotiationsInput = z.infer<typeof employerNegotiationsSchema>;

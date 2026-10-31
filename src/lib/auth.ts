@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { randomBytes } from "node:crypto";
 import { HhApiError } from "./errors.js";
+import type { ApplicationSettings } from "./settings.js";
 
 interface AuthState {
   authBase: string;
@@ -15,7 +17,8 @@ interface AuthState {
   expiresAt: number | null;
 }
 
-const TOKENS_DIR = path.join(os.homedir(), ".hh-mcp");
+const TOKENS_DIR =
+  process.env.HH_DATA_DIR || path.join(os.homedir(), ".hh-mcp");
 const TOKENS_PATH = path.join(TOKENS_DIR, "tokens.json");
 
 const state: AuthState = {
@@ -31,14 +34,39 @@ const state: AuthState = {
 };
 
 let refreshPromise: Promise<void> | null = null;
+let authGeneration = 0;
+let adminManaged = false;
 
-export function initAuth(): void {
-  state.authBase = (process.env.HH_AUTH_BASE ?? "https://hh.kz").replace(/\/+$/, "");
-  state.apiBase = (process.env.HH_API_BASE ?? "https://api.hh.ru").replace(/\/+$/, "");
-  state.userAgent = process.env.HH_USER_AGENT || "hh-mcp/0.1.1 (+https://github.com/mardanaltynbekov1104/hh-mcp)";
+export function initAuth(
+  application?: ApplicationSettings | null,
+  managed = false,
+): void {
+  adminManaged = managed;
+  authGeneration++;
+  refreshPromise = null;
+  state.accessToken = null;
+  state.refreshToken = null;
+  state.expiresAt = null;
+  state.authBase = (process.env.HH_AUTH_BASE ?? "https://hh.kz").replace(
+    /\/+$/,
+    "",
+  );
+  state.apiBase = (process.env.HH_API_BASE ?? "https://api.hh.ru").replace(
+    /\/+$/,
+    "",
+  );
+  state.userAgent =
+    process.env.HH_USER_AGENT ||
+    "hh-mcp/0.1.1 (+https://github.com/mardanaltynbekov1104/hh-mcp)";
   state.clientId = process.env.HH_CLIENT_ID || null;
   state.clientSecret = process.env.HH_CLIENT_SECRET || null;
-  state.redirectUri = process.env.HH_REDIRECT_URI || "urn:ietf:wg:oauth:2.0:oob";
+  state.redirectUri =
+    process.env.HH_REDIRECT_URI || "urn:ietf:wg:oauth:2.0:oob";
+  if (application) {
+    state.clientId = application.clientId;
+    state.clientSecret = application.clientSecret;
+    state.redirectUri = application.redirectUri;
+  }
 
   // 1) tokens.json в приоритете (свежее, чем env)
   const fromDisk = loadTokensFromDisk();
@@ -49,16 +77,20 @@ export function initAuth(): void {
   }
 
   // 2) env как fallback
-  if (!state.accessToken && process.env.HH_ACCESS_TOKEN) {
+  if (!application && !state.accessToken && process.env.HH_ACCESS_TOKEN) {
     state.accessToken = process.env.HH_ACCESS_TOKEN;
   }
-  if (!state.refreshToken && process.env.HH_REFRESH_TOKEN) {
+  if (!application && !state.refreshToken && process.env.HH_REFRESH_TOKEN) {
     state.refreshToken = process.env.HH_REFRESH_TOKEN;
   }
 
-  const mode = state.accessToken ? "tokens" : state.clientId ? "oauth-ready" : "anonymous";
+  const mode = state.accessToken
+    ? "tokens"
+    : state.clientId
+      ? "oauth-ready"
+      : "anonymous";
   console.error(
-    `[AUTH] api=${state.apiBase} auth=${state.authBase} mode=${mode} client_id=${state.clientId ? "set" : "unset"}`
+    `[AUTH] api=${state.apiBase} auth=${state.authBase} mode=${mode} client_id=${state.clientId ? "set" : "unset"}`,
   );
 }
 
@@ -82,6 +114,21 @@ export function getClientSecret(): string | null {
   return state.clientSecret;
 }
 
+export function isAdminManaged(): boolean {
+  return adminManaged;
+}
+
+export function configureApplication(application: ApplicationSettings): void {
+  state.clientId = application.clientId;
+  state.clientSecret = application.clientSecret;
+  state.redirectUri = application.redirectUri;
+  authGeneration++;
+  state.accessToken = null;
+  state.refreshToken = null;
+  state.expiresAt = null;
+  refreshPromise = null;
+}
+
 export function getRedirectUri(): string {
   return state.redirectUri;
 }
@@ -97,22 +144,42 @@ export function hasRefreshToken(): boolean {
 export function setTokens(
   accessToken: string,
   refreshToken?: string | null,
-  expiresInSec?: number | null
+  expiresInSec?: number | null,
+  expectedGeneration = authGeneration,
+  advanceGeneration = true,
 ): void {
+  if (expectedGeneration !== authGeneration)
+    throw new Error("Authentication changed; reconnect HeadHunter");
+  const next = {
+    accessToken,
+    refreshToken:
+      refreshToken !== undefined ? refreshToken : state.refreshToken,
+    expiresAt: expiresInSec ? Date.now() + expiresInSec * 1000 : null,
+  };
+  persistTokens(next);
   state.accessToken = accessToken;
-  if (refreshToken !== undefined) state.refreshToken = refreshToken;
-  state.expiresAt = expiresInSec ? Date.now() + expiresInSec * 1000 : null;
-  persistTokens();
+  state.refreshToken = next.refreshToken;
+  state.expiresAt = next.expiresAt;
+  if (advanceGeneration) {
+    authGeneration++;
+    refreshPromise = null;
+  }
 }
 
-export function clearTokens(): void {
+export function clearTokens(strict = false): void {
+  if (strict) fs.rmSync(TOKENS_PATH, { force: true });
+  authGeneration++;
+  refreshPromise = null;
   state.accessToken = null;
   state.refreshToken = null;
   state.expiresAt = null;
   try {
     if (fs.existsSync(TOKENS_PATH)) fs.unlinkSync(TOKENS_PATH);
   } catch (err) {
-    console.error("[AUTH] failed to remove tokens.json:", (err as Error).message);
+    console.error(
+      "[AUTH] failed to remove tokens.json:",
+      (err as Error).message,
+    );
   }
 }
 
@@ -140,27 +207,37 @@ function loadTokensFromDisk(): {
   }
 }
 
-function persistTokens(): void {
+function persistTokens(
+  tokens: Pick<AuthState, "accessToken" | "refreshToken" | "expiresAt">,
+): void {
+  const temporary = TOKENS_PATH + "." + randomBytes(8).toString("hex") + ".tmp";
   try {
     if (!fs.existsSync(TOKENS_DIR)) {
       fs.mkdirSync(TOKENS_DIR, { recursive: true, mode: 0o700 });
     }
     fs.writeFileSync(
-      TOKENS_PATH,
+      temporary,
       JSON.stringify(
         {
-          access_token: state.accessToken,
-          refresh_token: state.refreshToken,
-          expires_at: state.expiresAt,
+          access_token: tokens.accessToken,
+          refresh_token: tokens.refreshToken,
+          expires_at: tokens.expiresAt,
           saved_at: Date.now(),
         },
         null,
-        2
+        2,
       ),
-      { mode: 0o600 }
+      { mode: 0o600, flag: "wx" },
     );
+    fs.renameSync(temporary, TOKENS_PATH);
   } catch (err) {
-    console.error("[AUTH] failed to persist tokens.json:", (err as Error).message);
+    console.error(
+      "[AUTH] failed to persist tokens.json:",
+      (err as Error).message,
+    );
+    throw new Error("Failed to save HeadHunter session");
+  } finally {
+    fs.rmSync(temporary, { force: true });
   }
 }
 
@@ -172,20 +249,23 @@ function persistTokens(): void {
  */
 export async function refreshAccessToken(): Promise<void> {
   if (refreshPromise) return refreshPromise;
-  refreshPromise = (async () => {
+  const generation = authGeneration;
+  const promise = (async () => {
     if (!state.refreshToken) {
       throw new HhApiError({
         status: 401,
         endpoint: "POST /oauth/token",
-        message: "no refresh_token — run hh_auth action=get_auth_url and exchange_code first",
+        message:
+          "no refresh_token — run hh_auth action=get_auth_url and exchange_code first",
       });
     }
     const body = new URLSearchParams({
       grant_type: "refresh_token",
       refresh_token: state.refreshToken,
     });
-    const res = await fetch(`${state.authBase}/oauth/token`, {
+    const res = await fetch(`${state.apiBase}/token`, {
       method: "POST",
+      redirect: "error",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         "User-Agent": state.userAgent,
@@ -206,24 +286,36 @@ export async function refreshAccessToken(): Promise<void> {
       refresh_token?: string;
       expires_in?: number;
     };
-    setTokens(json.access_token, json.refresh_token ?? state.refreshToken, json.expires_in ?? null);
+    setTokens(
+      json.access_token,
+      json.refresh_token ?? state.refreshToken,
+      json.expires_in ?? null,
+      generation,
+      false,
+    );
     console.error("[AUTH] refreshed access_token");
   })();
+  refreshPromise = promise;
   try {
     await refreshPromise;
   } finally {
-    refreshPromise = null;
+    if (refreshPromise === promise) refreshPromise = null;
   }
 }
 
 /**
  * Exchange authorization_code for tokens.
  */
-export async function exchangeCode(code: string): Promise<{
+export async function exchangeCode(
+  code: string,
+  codeVerifier?: string,
+  canCommit: () => boolean = () => true,
+): Promise<{
   access_token: string;
   refresh_token: string;
   expires_in: number;
 }> {
+  const generation = authGeneration;
   if (!state.clientId || !state.clientSecret) {
     throw new HhApiError({
       status: 400,
@@ -238,8 +330,10 @@ export async function exchangeCode(code: string): Promise<{
     code,
     redirect_uri: state.redirectUri,
   });
-  const res = await fetch(`${state.authBase}/oauth/token`, {
+  if (codeVerifier) body.set("code_verifier", codeVerifier);
+  const res = await fetch(`${state.apiBase}/token`, {
     method: "POST",
+    redirect: "error",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       "User-Agent": state.userAgent,
@@ -260,14 +354,20 @@ export async function exchangeCode(code: string): Promise<{
     refresh_token: string;
     expires_in: number;
   };
-  setTokens(json.access_token, json.refresh_token, json.expires_in);
+  if (!canCommit())
+    throw new Error("Authorization was cancelled; reconnect HeadHunter");
+  setTokens(json.access_token, json.refresh_token, json.expires_in, generation);
   return json;
 }
 
 /**
  * Build authorize URL for OAuth code flow.
  */
-export function buildAuthorizeUrl(opts?: { state?: string; force?: boolean }): string {
+export function buildAuthorizeUrl(opts?: {
+  state?: string;
+  force?: boolean;
+  codeChallenge?: string;
+}): string {
   if (!state.clientId) {
     throw new HhApiError({
       status: 400,
@@ -282,5 +382,9 @@ export function buildAuthorizeUrl(opts?: { state?: string; force?: boolean }): s
   });
   if (opts?.state) params.set("state", opts.state);
   if (opts?.force) params.set("force_login", "true");
+  if (opts?.codeChallenge) {
+    params.set("code_challenge", opts.codeChallenge);
+    params.set("code_challenge_method", "S256");
+  }
   return `${state.authBase}/oauth/authorize?${params.toString()}`;
 }

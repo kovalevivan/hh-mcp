@@ -22,7 +22,7 @@ export const employerInfoSchema = z.object({
   employer_id: z.string().optional().describe("for action=get / managers_list / addresses_list etc."),
   manager_id: z.string().optional().describe("for action=manager_get"),
   address_id: z.string().optional().describe("for action=address_get"),
-  query: z.record(z.unknown()).optional().describe("optional query params"),
+  query: z.record(z.string(), z.unknown()).optional().describe("optional query params"),
 });
 
 export type EmployerInfoInput = z.infer<typeof employerInfoSchema>;
