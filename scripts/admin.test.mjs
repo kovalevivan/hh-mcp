@@ -420,3 +420,17 @@ test("expired state is rejected before contacting the provider", async () => {
     await once(http, "close");
   }
 });
+
+test("legacy application settings can migrate without reentering the saved secret", async () => {
+  auth.initAuth({
+    clientId: "legacy",
+    clientSecret: "legacy-secret",
+    redirectUri: "https://old.example.com/callback",
+  });
+  assert.equal((await call("/settings")).body.needsMigration, true);
+  const result = await call("/settings", "PUT", { clientId: "legacy" });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.needsMigration, false);
+  assert.equal(store.load().clientSecret, "legacy-secret");
+  assert.equal(store.load().redirectUri, callbackUri);
+});

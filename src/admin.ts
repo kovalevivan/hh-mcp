@@ -105,6 +105,11 @@ export function createAdminRouter(options: AdminOptions): Router {
     redirectUri: options.callbackUri,
     connected: Boolean(getAccessToken()),
     renewable: hasRefreshToken(),
+    needsMigration: Boolean(
+      getClientId() &&
+      getClientSecret() &&
+      getRedirectUri() !== options.callbackUri,
+    ),
   });
 
   router.get("/settings", (_req, res) => res.json(status()));
