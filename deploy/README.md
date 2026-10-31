@@ -78,3 +78,39 @@ For an update or rollback, check out the desired commit, set
 This preserves the environment file and token directory. To remove only MCP,
 remove its Caddy handles, validate/reload, then run `docker compose down` in
 this directory. Keep `deploy/tokens` if the HH session should be retained.
+
+## LibreChat administration
+
+Administration is optional and disabled without `HH_ADMIN_TOKEN`. Enable it with
+an independent random management token, a stable `HH_CONFIG_KEY` (32 random bytes
+encoded as 64 hex characters) and `HH_ADMIN_REDIRECT_URI` (the registered HTTPS
+callback; this deployment uses `https://admin.artdent-ai.ru/headhunter-callback`).
+The admin panel needs the same management token and the server's `/hh/admin` URL.
+The infrastructure bridge is installed by the operator; users enter HH application
+credentials only on the HeadHunter page in LibreChat administration.
+
+`HH_DATA_DIR` optionally changes the private data directory. The default remains
+`~/.hh-mcp`. Application credentials are stored there as authenticated encrypted
+`application.enc`; OAuth tokens retain the existing private `tokens.json` format.
+Back up the private directory and the deployment environment containing the
+matching encryption key. Changing that encryption key requires re-encrypting the
+saved application; do not rotate it independently of existing encrypted data.
+
+Administrative routes (`settings`, `authorize`, `exchange`, `cancel`, `test`,
+`disconnect`) require the separate management key. They never return the saved
+client secret or OAuth tokens. The chat key cannot call them. In managed mode,
+`hh_auth` permits only `status` and `me`; account changes are made in the admin
+panel. Existing standalone CLI configuration remains supported.
+
+OAuth uses the current `https://api.hh.ru/token` endpoint, PKCE, a single-use state
+and a callback bound to the initiating admin session. A new attempt supersedes the
+previous one. Cancellation, changing the application, or disconnecting invalidate
+late exchanges. `HH_OAUTH_STATE_TTL_MS` defaults to 600000 and may shorten the
+10-minute maximum. Restarting the MCP process requires beginning authorization
+again, while saved credentials and established HH sessions survive restart.
+HTTP callback URLs are accepted only for loopback integration tests.
+
+Run `node --import tsx --test scripts/*.test.mjs` for focused regression tests.
+`scripts/admin.fixture.mjs` starts an isolated HH/LibreChat HTTP fixture at
+127.0.0.1:3412 for browser checks; it accepts only fake test credentials and cleans
+its temporary data on SIGTERM. It is never used in production.
