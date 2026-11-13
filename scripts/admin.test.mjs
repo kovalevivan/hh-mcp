@@ -147,6 +147,7 @@ test("OAuth uses PKCE and consumes the state once", async () => {
   assert.equal(started.status, 200);
   const url = new URL(started.body.url);
   assert.equal(url.origin, "https://hh.ru");
+  assert.equal(url.searchParams.has("force_login"), false);
   assert.equal(url.searchParams.get("state"), state);
   assert.equal(url.searchParams.get("code_challenge_method"), "S256");
   assert.equal(
@@ -167,6 +168,25 @@ test("OAuth uses PKCE and consumes the state once", async () => {
     409,
   );
   assert.equal(exchanges.length, 1);
+});
+test("switching a connected account still requests a fresh HH login", async () => {
+  await save();
+  auth.setTokens("access-test", "refresh-test");
+  const state = "9".repeat(64);
+  const started = await call("/authorize", "POST", { state });
+  assert.equal(started.status, 200);
+  const url = new URL(started.body.url);
+  assert.equal(url.searchParams.get("force_login"), "true");
+  assert.equal(url.searchParams.get("state"), state);
+  assert.equal(url.searchParams.get("code_challenge_method"), "S256");
+});
+test("connecting after disconnect can reuse the browser's HH session", async () => {
+  await save();
+  auth.setTokens("access-test", "refresh-test");
+  assert.equal((await call("/disconnect", "POST")).status, 200);
+  const started = await call("/authorize", "POST", { state: "8".repeat(64) });
+  assert.equal(started.status, 200);
+  assert.equal(new URL(started.body.url).searchParams.has("force_login"), false);
 });
 test("cancellation consumes the pending flow", async () => {
   await save();

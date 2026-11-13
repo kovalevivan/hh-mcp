@@ -173,7 +173,7 @@ export function createAdminRouter(options: AdminOptions): Router {
     res.json({
       url: buildAuthorizeUrl({
         state: input.data.state,
-        force: true,
+        force: Boolean(getAccessToken()),
         codeChallenge: createHash("sha256")
           .update(verifier)
           .digest("base64url"),
