@@ -39,6 +39,7 @@ async function doFetch(
   const url = `${getApiBase()}${path}${buildQuery(opts.query)}`;
   const headers: Record<string, string> = {
     "User-Agent": getUserAgent(),
+    "HH-User-Agent": getUserAgent(),
     Accept: "application/json",
     ...(opts.headers ?? {}),
   };

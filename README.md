@@ -17,7 +17,10 @@ MCP-сервер для HeadHunter API (hh.kz / hh.ru), сфокусирован
 | `hh_employer_info` | employer OAuth | `me`, `get`, `managers_list/get`, `addresses_list/get`, `departments`, `vacancy_areas`, `vacancy_branded_templates`, `blacklisted` |
 | `hh_employer_vacancies` | employer OAuth | `active_list`/`archived_list`/`hidden_list`, CRUD, `archive/restore/prolongate/hide/unhide`, drafts CRUD + `draft_publish`/`draft_duplicates`, `stats`, `visitors`, `available_services`, `upgrade_list`, `related`, `prolongation_info`, `disable_auto_publication`, плюс публичный `search`/`get`/`similar` |
 | `hh_employer_negotiations` | employer OAuth | **`invite`** (приглашение кандидата на вакансию), `collections`, `list`, `get`, `mark_read`, `messages_list/send`, `history`, `move_to_collection`/`change_action`, `view`, `templates_list`/`message_template_get`/`mail_templates_list`/`mail_template_update`, `preference_order_get/set`, `statistics`/`statistics_manager`, `active_topics`, `ignore_list`, `candidate_test_solution`/`test_results` |
-| `hh_employer_resumes` | employer OAuth (paid) | `search`, `get` (требует `confirm: true` — тратит контакт!), `views_list`, `negotiations_history`, **saved searches CRUD** (`list/get/create/update/delete/move_manager`), **applicant comments CRUD** (`list/add/update/delete` — заметки команды о кандидате), `mine_invitations`, `available_resume_search_criteria` |
+| `hh_employer_resumes` | employer OAuth (paid) | `search`, `get` (профессиональные данные без запроса контактов; длинный текст — частями), `negotiations_history`, **saved searches CRUD** (`list/get/create/update/delete/move_manager`), **applicant comments CRUD** (`list/add/update/delete` — заметки команды о кандидате), `mine_invitations`, `available_resume_search_criteria` |
+| `hh_chats` | employer OAuth | Актуальный API: список чатов, история сообщений, участники, счётчик непрочитанных. Только чтение |
+| `hh_chat_start` | employer OAuth | Создать/получить чат по резюме без первого сообщения. Требует подтверждения |
+| `hh_chat_send` | employer OAuth | Отправить согласованный текст после проверки получателя и доступности переписки. Требует подтверждения |
 | `hh_webhooks` | employer OAuth | `list`, `subscribe`, `update`, `unsubscribe` — real-time события (NEW_NEGOTIATION, NEGOTIATION_FEEDBACK и др.). Требует публичный HTTPS-URL приёмника. |
 
 ## Что нужно для запуска
@@ -116,7 +119,7 @@ hh_employer_vacancies action=prolongate vacancy_id=12345678
 hh_employer_resumes action=search query={"text":"эндокринолог","area":"160","experience":"between3And6"}
 
 # Открыть резюме (тратит контакт!)
-hh_employer_resumes action=get resume_id=abcdef0123456789 confirm=true
+hh_employer_resumes action=get resume_id=abcdef0123456789
 
 # Пригласить найденного кандидата на свою вакансию (sourcing)
 hh_employer_negotiations action=invite resume_id=abc... vacancy_id=12345678 message="Здравствуйте, посмотрите нашу вакансию — кажется, у нас совпадение по навыкам и зарплате. Можем созвониться завтра в 15:00?"
@@ -148,9 +151,52 @@ hh_salary action=evaluation area_id=160 query={"professional_role":["24"],"emplo
 | `HH_REFRESH_TOKEN` | можно стартовать с готовым refresh | нет |
 | `MCP_AUTH_TOKEN` | Bearer для HTTP-режима (защита `/mcp`) | нет |
 
-## Roadmap (v0.2+)
+## Переписка через актуальный API HH
 
-- `hh_chats` — новый chat API HH (`/common/chats/*`), который заменяет deprecated `/negotiations/{id}/messages`. CRUD сообщений, файлы, участники, unread-counter.
+1. `hh_chats action=list` — найдите чат; фильтры `vacancy_ids`,
+   `filter_unread`, `filter_has_text_message`, `vacancy_status`, `page`, `per_page`.
+2. `hh_chats action=participants chat_id=...` — определите участника APPLICANT.
+   ID чата и ID отклика — разные идентификаторы.
+3. `hh_chats action=messages chat_id=... order=prev limit=10` — прочитайте
+   последние сообщения. При `has_more=true` используйте `start_message_id`
+   и `order` для следующей порции. Чтение не меняет статус прочитанного.
+4. Покажите пользователю имя кандидата, контекст вакансии и точный текст.
+   Отправка выполняется отдельным `hh_chat_send` с `chat_id`, `recipient_id`,
+   `recipient_name`, `text`, `idempotency_key` (UUID) и `confirm=true`.
+
+При повторе сохраняйте тот же UUID, чат и текст. HTTP 409 не означает, что
+сообщение не доставлено: проверьте историю и не генерируйте новый ключ для
+повторной отправки. Сервер не делает автоматического fallback на старый API.
+Сообщения помечаются `is_automated=true`. Перед отправкой сервер повторно
+проверяет имя/ID кандидата и `write_message_state.allowed`.
+
+Если переписки ещё нет, `hh_chat_start resume_id=... confirm=true` создаёт
+или получает чат без вакансии. Вызов не содержит `first_message` и не отправляет
+текст. Создание и последующая отправка подтверждаются отдельно. HH может
+отказать из-за прав, тарифных ограничений или недоступности резюме.
+
+В LibreChat обязательное подтверждение следует включить на стороне хоста:
+
+```yaml
+endpoints:
+  agents:
+    toolApproval:
+      enabled: true
+      mode: bypass
+      ask:
+        - hh_chat_start_mcp_headhunter
+        - hh_chat_send_mcp_headhunter
+```
+
+При существующей политике сохраните её настройки и добавьте эти имена в `ask`.
+Так пользователь подтверждает точные аргументы вызова в интерфейсе. Один только
+аргумент `confirm` и текст инструкции агента не заменяют проверку хоста.
+Файлы, редактирование и удаление сообщений этим обновлением не добавляются.
+Контракт: https://api.hh.ru/openapi/specification/public (22.11.2026).
+
+## Roadmap
+
+- Файлы, редактирование/удаление сообщений через новый API чатов.
 - `hh_billing` — `payable_api_method_access`, `payable_api_actions/active` (проверка платных услуг работодателя).
 - Applicant-side tools (резюме соискателя, отклики на чужие вакансии, авто-отклики).
 - Tests dictionary (`/tests`) и привязка тестов к вакансиям.
@@ -161,6 +207,10 @@ hh_salary action=evaluation area_id=160 query={"professional_role":["24"],"emplo
 - Авто-генерация типов из `https://api.hh.ru/openapi/specification/public`.
 
 ## Changelog
+
+**v0.2.0** — актуальные чаты HH: чтение, отдельное создание чата и отправка
+с проверкой получателя, подтверждением и идемпотентным ключом. 12 инструментов.
+Сохранены действующие исправления контрактов HH и компактная выдача резюме.
 
 **v0.1.1** — sourcing essentials: `hh_employer_negotiations.invite` (приглашение кандидата на вакансию), saved searches CRUD, applicant comments CRUD, `hh_employer_vacancies.visitors`, новые tools `hh_salary` и `hh_webhooks`. 9 tools, 70+ actions, полное покрытие employer workflow кроме нового chat API.
 

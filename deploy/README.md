@@ -1,116 +1,65 @@
-# ArtDent deployment
+# ArtDent HH MCP deployment
 
-This fork runs beside Harly on its existing Docker network. Its own Compose
-project does not restart Harly or PostgreSQL. Caddy exposes the MCP at
-`https://hr.artdent-ai.ru/hh/mcp` and health at `/hh/health`.
+The MCP runs on the existing ArtDent server in its own Compose project, attached
+to Docker network `artdent-app`. LibreChat uses the internal gateway URL
+`http://artdent-tools-gateway:8080/headhunter/mcp`. Host port 3400 binds to
+loopback only. The shared employer account is managed through
+`https://admin.artdent-ai.ru/headhunter`; it is not connected separately by HR users.
 
-The upstream authentication state is shared by this process: this deployment
-is for one trusted employer account. Each client supplies the same private
-Bearer key. Without HH credentials only public HH methods are available.
+## Persistent configuration
 
-The fork also updates the MCP SDK and dependency lockfile to patched versions,
-including Zod 4. Record schemas retain arbitrary HH query/body keys with explicit
-string keys; `scripts/schema.test.mjs` covers these payloads and the paid-resume
-confirmation guard.
+`deploy/.env` is private (mode 600) and contains `MCP_AUTH_TOKEN`, the independent
+`HH_ADMIN_TOKEN`, `HH_CONFIG_KEY` (32 bytes, hex-encoded), `HH_ADMIN_REDIRECT_URI`
+and `HH_MCP_REVISION`. The registered callback is
+`https://admin.artdent-ai.ru/headhunter-callback`.
 
-## Install
+`deploy/state` is owned by uid/gid 1000, mode 700, and mounted at
+`/home/node/.hh-mcp`. It retains OAuth tokens and encrypted application settings.
+Back up `.env` and `state` together: credentials cannot be recovered without the
+matching encryption key. Never include them in Git or deployment source archives.
+The MCP key cannot use administrative endpoints.
 
-Clone `https://github.com/kovalevivan/hh-mcp.git` into `/opt/hh-mcp` and check out
-the commit being deployed. Copy `.env.example` to `.env` inside `deploy`, set
-`HH_MCP_REVISION` to that commit and `MCP_AUTH_TOKEN` to a random key. Keep the
-environment file private (`chmod 600`). Create `deploy/tokens` owned by uid/gid
-1000 with mode 700; this writable mount retains HH tokens across restarts.
+## Update
 
-Run from `deploy`:
+1. Save a private backup of the current source, Compose, environment and state;
+   record the current image tag for rollback.
+2. Build the reviewed revision. Set only `HH_MCP_REVISION` in the existing `.env`.
+   Preserve credentials, encryption keys, gateway routing and state mounts.
+3. From `deploy`, validate with `docker compose config --quiet` and run
+   `docker compose up -d --no-deps --wait hh-mcp` after building the image.
+   Do not restart LibreChat, databases or the gateway.
+4. Check `/health` and authenticated `tools/list`: version 0.2.0 exposes 12 tools.
+   Run the MCP smoke test with `MCP_URL` and `MCP_TOKEN_FILE` pointing to private
+   configuration. Live verification uses GET-only HH calls.
+5. Reinitialize the `headhunter` MCP connection in LibreChat to refresh the tool
+   catalog. Preserve resource ACLs: authorized HR users retain their shared access.
 
-```sh
-docker compose config --quiet
-docker compose up -d --build --wait
-```
+For a fresh build use the repository Dockerfile and `docker compose build hh-mcp`.
+A bundle-only update may copy the verified `dist/bundle.cjs` onto the exact
+currently deployed runtime image, then tag it with the new Git revision. This
+retains the pinned Node runtime while avoiding an application-wide rebuild.
 
-Inside the existing `{$HARLY_DOMAIN}` Caddy site, wrap the application proxy in
-a fallback handle and add the MCP route before it:
+## Chat permissions
 
-```caddyfile
-handle_path /hh/* {
-  reverse_proxy hh-mcp:3400 {
-    flush_interval -1
-  }
-}
-handle {
-  reverse_proxy app:3000
-}
-```
+Bind `hh_chats_mcp_headhunter`, `hh_chat_start_mcp_headhunter` and
+`hh_chat_send_mcp_headhunter` to the recruitment agent. Preserve its existing
+resume tools, instructions and ACLs. Add the two write tools to the host's
+`endpoints.agents.toolApproval.ask` policy; see the root README for the example.
+Preserve any existing policy instead of replacing it.
 
-Back up the active Caddyfile, validate it, then reload Caddy. Keep the existing
-root redirect, security headers and old-domain redirect. Port 3400 is bound
-only to loopback; the HTTPS proxy supplies external access.
+Verify that a send call pauses with the recipient and text visible and that
+rejecting it performs no HH write. Never send a real candidate a test message.
+An empty HH chat list is a valid result. HH authorization or tariff errors must
+remain explicit failures, never be presented as successful delivery.
 
-## Verify and connect
+## Rollback
 
-```sh
-MCP_URL=https://hr.artdent-ai.ru/hh/mcp \
-MCP_TOKEN_FILE=/path/to/private-token HH_SMOKE_LIVE=1 node scripts/smoke.mjs
-```
+Restore the recorded image tag in `HH_MCP_REVISION` and recreate only `hh-mcp`.
+Restore the previous recruitment-agent tools and instructions if necessary.
+Do not roll back established OAuth state or remove the matching encryption key.
 
-Client configuration (substitute the private token locally):
+## Checks
 
-```json
-{
-  "mcpServers": {
-    "headhunter": {
-      "type": "streamable-http",
-      "url": "https://hr.artdent-ai.ru/hh/mcp",
-      "headers": { "Authorization": "Bearer YOUR_PRIVATE_MCP_TOKEN" }
-    }
-  }
-}
-```
-
-Add `HH_CLIENT_ID`, `HH_CLIENT_SECRET` and the registered `HH_REDIRECT_URI` to
-`deploy/.env` for employer access, then recreate this service. Use `hh_auth`
-to obtain the authorization URL and exchange the returned code. Copy only the
-code parameter from the callback URL; no callback handler is installed here.
-The token mount must be included in private backups and must never enter Git.
-
-For an update or rollback, check out the desired commit, set
-`HH_MCP_REVISION` accordingly and repeat `docker compose up -d --build --wait`.
-This preserves the environment file and token directory. To remove only MCP,
-remove its Caddy handles, validate/reload, then run `docker compose down` in
-this directory. Keep `deploy/tokens` if the HH session should be retained.
-
-## LibreChat administration
-
-Administration is optional and disabled without `HH_ADMIN_TOKEN`. Enable it with
-an independent random management token, a stable `HH_CONFIG_KEY` (32 random bytes
-encoded as 64 hex characters) and `HH_ADMIN_REDIRECT_URI` (the registered HTTPS
-callback; this deployment uses `https://admin.artdent-ai.ru/headhunter-callback`).
-The admin panel needs the same management token and the server's `/hh/admin` URL.
-The infrastructure bridge is installed by the operator; users enter HH application
-credentials only on the HeadHunter page in LibreChat administration.
-
-`HH_DATA_DIR` optionally changes the private data directory. The default remains
-`~/.hh-mcp`. Application credentials are stored there as authenticated encrypted
-`application.enc`; OAuth tokens retain the existing private `tokens.json` format.
-Back up the private directory and the deployment environment containing the
-matching encryption key. Changing that encryption key requires re-encrypting the
-saved application; do not rotate it independently of existing encrypted data.
-
-Administrative routes (`settings`, `authorize`, `exchange`, `cancel`, `test`,
-`disconnect`) require the separate management key. They never return the saved
-client secret or OAuth tokens. The chat key cannot call them. In managed mode,
-`hh_auth` permits only `status` and `me`; account changes are made in the admin
-panel. Existing standalone CLI configuration remains supported.
-
-OAuth uses the current `https://api.hh.ru/token` endpoint, PKCE, a single-use state
-and a callback bound to the initiating admin session. A new attempt supersedes the
-previous one. Cancellation, changing the application, or disconnecting invalidate
-late exchanges. `HH_OAUTH_STATE_TTL_MS` defaults to 600000 and may shorten the
-10-minute maximum. Restarting the MCP process requires beginning authorization
-again, while saved credentials and established HH sessions survive restart.
-HTTP callback URLs are accepted only for loopback integration tests.
-
-Run `node --import tsx --test scripts/*.test.mjs` for focused regression tests.
-`scripts/admin.fixture.mjs` starts an isolated HH/LibreChat HTTP fixture at
-127.0.0.1:3412 for browser checks; it accepts only fake test credentials and cleans
-its temporary data on SIGTERM. It is never used in production.
+Run `npx tsc --noEmit`, `node --import tsx --test scripts/*.test.mjs`,
+`npm run build:bundle` and `node scripts/smoke.mjs` against a local HTTP process
+with an isolated temporary HH data directory and a random MCP bearer token.

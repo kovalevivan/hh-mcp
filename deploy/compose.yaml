@@ -14,9 +14,9 @@ services:
     ports:
       - "127.0.0.1:3400:3400"
     volumes:
-      - ./tokens:/home/node/.hh-mcp
+      - ./state:/home/node/.hh-mcp
     networks:
-      - harly
+      - app
     read_only: true
     tmpfs:
       - /tmp:size=16m,noexec,nosuid
@@ -33,6 +33,6 @@ services:
         max-size: "10m"
         max-file: "3"
 networks:
-  harly:
+  app:
     external: true
-    name: artdent-harly_default
+    name: artdent-app

@@ -41,7 +41,7 @@ test("stdio mode remains usable without an HTTP bearer token", async () => {
       command: process.execPath, args: ["--import", "tsx", "src/index.ts"],
       env: cleanEnvironment(directory), stderr: "pipe",
     }));
-    assert.equal((await client.listTools()).tools.length, 9);
+    assert.equal((await client.listTools()).tools.length, 12);
   } finally {
     await client.close();
     fs.rmSync(directory, { recursive: true, force: true });

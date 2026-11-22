@@ -23,7 +23,10 @@ try {
     requestInit: { headers: { Authorization: `Bearer ${token}` } },
   }));
   const { tools } = await client.listTools();
-  assert.equal(tools.length, 9);
+  assert.equal(tools.length, 12);
+  for (const name of ["hh_chats", "hh_chat_start", "hh_chat_send"]) {
+    assert.ok(tools.some(tool => tool.name === name), `${name} is exposed`);
+  }
   const status = await client.callTool({ name: "hh_auth", arguments: { action: "status" } });
   assert.ok(!status.isError, "Auth status must be readable");
   if (process.env.HH_SMOKE_LIVE === "1") {
@@ -35,7 +38,7 @@ try {
     assert.ok(result.content.some(item => item.type === "text" && item.text.includes('"items"')));
     console.log("PASS: live HH vacancy search");
   }
-  console.log("PASS: health, missing/invalid auth, MCP initialize, nine tools, auth status");
+  console.log("PASS: health, missing/invalid auth, MCP initialize, twelve tools, auth status");
 } finally {
   await client.close();
 }
