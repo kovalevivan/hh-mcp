@@ -1,0 +1,1012 @@
+{
+  "source": "https://api.hh.ru/openapi/specification/public",
+  "retrieved": "2026-11-17",
+  "paths": {
+    "/employers/{employer_id}/managers/{manager_id}/limits/resume": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/me": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/manager_accounts/mine": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/token": {
+      "post": {
+        "bodyTypes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "delete": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/employers/{employer_id}/manager_types": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/managers": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "post": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/addresses": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/addresses/{address_id}": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/managers/{manager_id}/settings": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/managers/{manager_id}": {
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "delete": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "successor_id"
+        ],
+        "noContent": true
+      }
+    },
+    "/industries": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/dictionaries": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/professional_roles": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/educational_institutions": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "id"
+        ],
+        "noContent": false
+      }
+    },
+    "/languages": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/skills": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "id"
+        ],
+        "noContent": false
+      }
+    },
+    "/educational_institutions/{id}/faculties": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/vacancy_branded_templates": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/vacancy_areas/active": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/departments": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/webhook/subscriptions/{subscription_id}": {
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      },
+      "delete": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/webhook/subscriptions": {
+      "post": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/locales/resume": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/locales": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/clickme/statistics": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "date_from",
+          "date_to"
+        ],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/mail_templates": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/mail_templates/{template_id}": {
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/vacancies/drafts/{draft_id}/duplicates": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/vacancies/drafts/{draft_id}": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "delete": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/vacancies/auto_publication": {
+      "delete": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "draft_id"
+        ],
+        "noContent": true
+      }
+    },
+    "/vacancies/drafts": {
+      "post": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/vacancies/drafts/{draft_id}/publish": {
+      "post": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/resumes/{resume_id}/negotiations_history": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/saved_searches/resumes": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "post": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/resumes/{resume_id}": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/resumes/{resume_id}/phone": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/resumes": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/saved_searches/resumes/{id}": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      },
+      "delete": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/saved_searches/resumes/{saved_search_id}/managers/{manager_id}": {
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/districts": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/applicant_comments/{applicant_id}/{comment_id}": {
+      "put": {
+        "bodyTypes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      },
+      "delete": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/applicant_comments/{applicant_id}": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "post": {
+        "bodyTypes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/metro": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/metro/{city_id}": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/negotiations/{nid}/messages": {
+      "post": {
+        "bodyTypes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/negotiations/response": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "vacancy_id"
+        ],
+        "noContent": false
+      }
+    },
+    "/negotiations/read": {
+      "post": {
+        "bodyTypes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/employers/{employer_id}/managers/{manager_id}/negotiations_statistics": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/negotiations/{nid}/test/solution": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/negotiations/{collection_name}/{nid}": {
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/negotiations": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/negotiations_statistics": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/negotiations/phone_interview": {
+      "post": {
+        "bodyTypes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/message_templates/{template}": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/negotiations/{id}": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "put": {
+        "bodyTypes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/salary_statistics/paid/salary_evaluation/{area_id}": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/suggests/positions": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "text"
+        ],
+        "noContent": false
+      }
+    },
+    "/suggests/area_leaves": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "text"
+        ],
+        "noContent": false
+      }
+    },
+    "/suggests/fields_of_study": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "text"
+        ],
+        "noContent": false
+      }
+    },
+    "/suggests/vacancy_search_keyword": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "text"
+        ],
+        "noContent": false
+      }
+    },
+    "/suggests/professional_roles": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "text"
+        ],
+        "noContent": false
+      }
+    },
+    "/suggests/resume_search_keyword": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "text"
+        ],
+        "noContent": false
+      }
+    },
+    "/suggests/educational_institutions": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "text"
+        ],
+        "noContent": false
+      }
+    },
+    "/suggests/companies": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "text"
+        ],
+        "noContent": false
+      }
+    },
+    "/suggests/vacancy_positions": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "text"
+        ],
+        "noContent": false
+      }
+    },
+    "/suggests/skill_set": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "text"
+        ],
+        "noContent": false
+      }
+    },
+    "/suggests/areas": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "text"
+        ],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/services/payable_api_actions/active": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/managers/{manager_id}/method_access": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/services/available_publications": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/calls/transcripts/search": {
+      "post": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/calls/link": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [
+          "resume_id"
+        ],
+        "noContent": false
+      }
+    },
+    "/calls/records/search": {
+      "post": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/calls/history": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/tests": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/vacancies/{vacancy_id}/prolongate": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "post": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/employers/{employer_id}/vacancies/hidden": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/vacancies/{id}/preferred_negotiations_order": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "put": {
+        "bodyTypes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/employers/{employer_id}/managers/{manager_id}/vacancies/available_types": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/vacancies": {
+      "post": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/vacancies/{vacancy_id}/upgrades": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/vacancies/{vacancy_id}/related_vacancies": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/vacancies/active": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/vacancies/{vacancy_id}/visitors": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/vacancies/hidden/{vacancy_id}": {
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      },
+      "delete": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/vacancy_conditions": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/vacancies/archived": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/employers/{employer_id}/vacancies/archived/{vacancy_id}": {
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/vacancies/{vacancy_id}": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/vacancies/{vacancy_id}/similar_vacancies": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/vacancies/{vacancy_id}/stats": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/common/chats/{chat_id}/messages": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "post": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/common/chats/without_vacancy": {
+      "post": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/common/chats/{chat_id}/leave": {
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/common/chats/files/upload_links": {
+      "post": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/common/chats/{chat_id}/message/{message_id}/read": {
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/common/chats/files/conditions": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/common/chats/{chat_id}/messages/{message_id}": {
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      },
+      "delete": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/common/chats/{chat_id}/write_possibility": {
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [
+          "applicant_write_possibility"
+        ],
+        "noContent": true
+      }
+    },
+    "/common/chats": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/common/chats/counters/unread": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/common/chats/{chat_id}/participants": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      },
+      "put": {
+        "bodyTypes": [
+          "application/json"
+        ],
+        "requiredQuery": [],
+        "noContent": true
+      }
+    },
+    "/areas/countries": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/areas/{area_id}": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/areas": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/salary_statistics/dictionaries/salary_industries": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/salary_statistics/dictionaries/professional_areas": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/salary_statistics/dictionaries/employee_levels": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    },
+    "/salary_statistics/dictionaries/salary_areas": {
+      "get": {
+        "bodyTypes": [],
+        "requiredQuery": [],
+        "noContent": false
+      }
+    }
+  }
+}

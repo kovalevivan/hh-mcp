@@ -2,6 +2,7 @@ import { z } from "zod";
 import { hhRequest } from "../client/hh.js";
 import { ok, fail, failFromError, type ToolContent } from "../lib/result.js";
 import { getCurrentEmployerId } from "./_helpers.js";
+import { formParams } from "../lib/form.js";
 
 export const employerNegotiationsSchema = z.object({
   action: z
@@ -13,16 +14,13 @@ export const employerNegotiationsSchema = z.object({
       "list",
       "get",
       "active_topics",
-      "ignore_list",
       "mark_read",
       // messages (старый API, deprecated)
       "messages_list",
       "message_send",
-      "history",
       // state transitions
       "move_to_collection",
       "change_action",
-      "view",
       // tests
       "candidate_test_solution",
       "test_results",
@@ -52,16 +50,31 @@ export const employerNegotiationsSchema = z.object({
     .optional()
     .describe("id action из get-negotiation-item для change_action (см. поле available_actions)"),
   message: z.string().optional().describe("текст сообщения / приглашения"),
-  template: z.string().optional().describe("ключ шаблона для message_template_get / mail_template_update"),
+  template: z.string().optional().describe("ключ шаблона. templates_list/message_template_get требуют topic_id либо пару vacancy_id+resume_id (не одновременно). mail_template_update — ключ шаблона компании."),
   send_sms: z.boolean().optional().describe("отправить SMS соискателю при invite"),
   employer_id: z.string().optional().describe("employer id (для mail_templates_*; иначе берётся из /me)"),
   manager_id: z.string().optional().describe("для statistics_manager"),
-  topic_ids: z.array(z.string()).optional().describe("для mark_read — список topic_id"),
+  topic_ids: z.array(z.string()).max(50).optional().describe("для mark_read / move_to_collection — список topic_id"),
   query: z.record(z.string(), z.unknown()).optional(),
   body: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type EmployerNegotiationsInput = z.infer<typeof employerNegotiationsSchema>;
+
+function vacancyId(input: EmployerNegotiationsInput): string | undefined {
+  const id = input.vacancy_id ?? input.query?.vacancy_id;
+  return typeof id === "string" && id.trim() ? id : undefined;
+}
+
+function topicIds(input: EmployerNegotiationsInput): string[] {
+  const ids = input.topic_ids ?? (input.topic_id ? [input.topic_id] :
+    input.body?.topic_ids ?? input.body?.topic_id ?? []);
+  const values = Array.isArray(ids) ? ids : [ids];
+  if (values.length > 50 || values.some((id) => typeof id !== "string" || !id.trim())) {
+    throw new Error("topic_ids must contain 1–50 nonempty strings");
+  }
+  return values as string[];
+}
 
 export async function employerNegotiationsTool(
   input: EmployerNegotiationsInput
@@ -81,35 +94,37 @@ export async function employerNegotiationsTool(
       }
 
       case "collections":
+        if (!vacancyId(input)) return fail("vacancy_id is required for employer negotiations");
         return ok(
           await hhRequest("GET", "/negotiations", {
-            query: { ...input.query, only_collection_info: "true" },
+            query: { ...input.query, vacancy_id: vacancyId(input) },
           })
         );
 
       case "list": {
+        if (!vacancyId(input)) return fail("vacancy_id is required for employer negotiations");
         const query: Record<string, unknown> = { ...input.query };
-        if (input.vacancy_id) query.vacancy_id = input.vacancy_id;
-        const path = input.collection ? `/negotiations/${input.collection}` : "/negotiations";
+        query.vacancy_id = vacancyId(input);
+        const path = input.collection ? `/negotiations/${encodeURIComponent(input.collection)}` : "/negotiations";
         return ok(await hhRequest("GET", path, { query }));
       }
 
       case "get":
         if (!input.topic_id) return fail("topic_id is required");
-        return ok(await hhRequest("GET", `/negotiations/${input.topic_id}`));
+        return ok(await hhRequest("GET", `/negotiations/${encodeURIComponent(input.topic_id)}`));
 
       case "active_topics":
-        return ok(await hhRequest("GET", "/negotiations/active_topics", { query: input.query }));
-
-      case "ignore_list":
-        return ok(await hhRequest("GET", "/negotiations/ignored", { query: input.query }));
+        if (!vacancyId(input)) return fail("vacancy_id is required for employer negotiations");
+        return ok(await hhRequest("GET", "/negotiations", {
+          query: { ...input.query, vacancy_id: vacancyId(input), status: "active" },
+        }));
 
       case "mark_read": {
-        const ids = input.topic_ids ?? (input.topic_id ? [input.topic_id] : []);
+        const ids = topicIds(input);
         if (ids.length === 0) return fail("topic_id or topic_ids is required");
         return ok(
           await hhRequest("POST", "/negotiations/read", {
-            body: input.body ?? { topic_ids: ids },
+            form: formParams({ topic_id: ids }),
           })
         );
       }
@@ -117,91 +132,95 @@ export async function employerNegotiationsTool(
       case "messages_list":
         if (!input.topic_id) return fail("topic_id is required");
         return ok(
-          await hhRequest("GET", `/negotiations/${input.topic_id}/messages`, {
+          await hhRequest("GET", `/negotiations/${encodeURIComponent(input.topic_id)}/messages`, {
             query: input.query,
           })
         );
 
       case "message_send":
         if (!input.topic_id) return fail("topic_id is required");
-        if (!input.message && !input.body) return fail("message or body is required");
+        if (!(input.body?.message ?? input.message)) return fail("message or body.message is required");
         return ok(
-          await hhRequest("POST", `/negotiations/${input.topic_id}/messages`, {
-            body: input.body ?? { message: input.message },
+          await hhRequest("POST", `/negotiations/${encodeURIComponent(input.topic_id)}/messages`, {
+            form: formParams({ ...input.body, message: input.body?.message ?? input.message }),
           })
         );
 
-      case "history":
-        if (!input.topic_id) return fail("topic_id is required");
-        return ok(await hhRequest("GET", `/negotiations/${input.topic_id}/history`));
-
-      case "move_to_collection":
+      case "move_to_collection": {
         if (!input.collection) return fail("collection is required");
-        if (!input.topic_id && !(input.body && (input.body as { topic_ids?: unknown }).topic_ids))
-          return fail("topic_id or body.topic_ids is required");
+        const ids = topicIds(input);
+        if (!ids.length) return fail("topic_id or topic_ids is required");
+        const { topic_ids: _legacyIds, topic_id: _ids, ...fields } = input.body ?? {};
         return ok(
-          await hhRequest("PUT", `/negotiations/${input.collection}`, {
-            body: input.body ?? { topic_ids: [input.topic_id] },
+          await hhRequest("PUT", `/negotiations/${encodeURIComponent(input.collection)}`, {
+            form: formParams({ ...fields, topic_id: ids }),
           })
         );
+      }
 
       case "change_action": {
         if (!input.topic_id) return fail("topic_id is required");
         if (!input.action_id) return fail("action_id is required (см. available_actions в negotiation item)");
         return ok(
-          await hhRequest("PUT", `/negotiations/${input.topic_id}/${input.action_id}`, {
+          await hhRequest("PUT", `/negotiations/${encodeURIComponent(input.action_id)}/${encodeURIComponent(input.topic_id)}`, {
             body: input.body,
           })
         );
       }
 
-      case "view":
-        if (!input.topic_id) return fail("topic_id is required");
-        return ok(
-          (await hhRequest("POST", `/negotiations/${input.topic_id}/view`)) ?? { viewed: true }
-        );
-
       case "candidate_test_solution":
-        if (!input.topic_id) return fail("topic_id is required");
-        return ok(await hhRequest("GET", `/negotiations/${input.topic_id}/test_solution`));
-
       case "test_results":
         if (!input.topic_id) return fail("topic_id is required");
-        return ok(await hhRequest("GET", `/negotiations/${input.topic_id}/test/solution`));
+        return ok(await hhRequest("GET", `/negotiations/${encodeURIComponent(input.topic_id)}/test/solution`));
 
       case "templates_list":
-        return ok(await hhRequest("GET", "/message_templates", { query: input.query }));
-
-      case "message_template_get":
+      case "message_template_get": {
         if (!input.template) return fail("template is required");
-        return ok(await hhRequest("GET", `/message_templates/${input.template}`));
+        const query = { ...input.query };
+        if (input.topic_id) query.topic_id = input.topic_id;
+        if (input.vacancy_id) query.vacancy_id = input.vacancy_id;
+        if (input.resume_id) query.resume_id = input.resume_id;
+        if (query.topic_id && (query.vacancy_id || query.resume_id)) {
+          return fail("For a message template use topic_id OR vacancy_id+resume_id, not both");
+        }
+        if (!query.topic_id && !(query.vacancy_id && query.resume_id)) {
+          return fail("topic_id or vacancy_id+resume_id is required for a message template");
+        }
+        return ok(await hhRequest("GET", `/message_templates/${encodeURIComponent(input.template)}`, { query }));
+      }
 
       case "mail_templates_list": {
         const employer_id = input.employer_id ?? (await getCurrentEmployerId());
-        return ok(await hhRequest("GET", `/employers/${employer_id}/mail_templates`));
+        return ok(await hhRequest("GET", `/employers/${encodeURIComponent(employer_id)}/mail_templates`));
       }
 
       case "mail_template_update": {
         if (!input.template) return fail("template is required");
+        if (!input.body) return fail("body is required");
         const employer_id = input.employer_id ?? (await getCurrentEmployerId());
         return ok(
-          await hhRequest("PUT", `/employers/${employer_id}/mail_templates/${input.template}`, {
+          await hhRequest("PUT", `/employers/${encodeURIComponent(employer_id)}/mail_templates/${encodeURIComponent(input.template)}`, {
             body: input.body,
           })
         );
       }
 
       case "preference_order_get":
-        return ok(await hhRequest("GET", "/negotiations/preferred_order"));
+        if (!vacancyId(input)) return fail("vacancy_id is required");
+        return ok(await hhRequest("GET", `/vacancies/${vacancyId(input)}/preferred_negotiations_order`));
 
       case "preference_order_set":
+        if (!vacancyId(input)) return fail("vacancy_id is required");
+        if (!input.body?.order) return fail("body.order is required");
         return ok(
-          await hhRequest("PUT", "/negotiations/preferred_order", { body: input.body ?? {} })
+          await hhRequest("PUT", `/vacancies/${vacancyId(input)}/preferred_negotiations_order`, {
+            form: formParams({ order: input.body.order }),
+          })
         );
 
       case "statistics":
-        if (!input.vacancy_id) return fail("vacancy_id is required for statistics");
-        return ok(await hhRequest("GET", `/negotiations/vacancy/${input.vacancy_id}/statistics`));
+        if (input.vacancy_id) return ok(await hhRequest("GET", `/vacancies/${encodeURIComponent(input.vacancy_id)}/stats`));
+        return ok(await hhRequest("GET", `/employers/${input.employer_id ?? await getCurrentEmployerId()}/negotiations_statistics`));
 
       case "statistics_manager": {
         if (!input.manager_id) return fail("manager_id is required");
@@ -209,7 +228,7 @@ export async function employerNegotiationsTool(
         return ok(
           await hhRequest(
             "GET",
-            `/employers/${employer_id}/managers/${input.manager_id}/method_access`,
+            `/employers/${encodeURIComponent(employer_id)}/managers/${encodeURIComponent(input.manager_id)}/negotiations_statistics`,
             { query: input.query }
           )
         );

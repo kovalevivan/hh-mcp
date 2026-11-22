@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { hhRequest } from "../client/hh.js";
 import { ok, fail, failFromError, type ToolContent } from "../lib/result.js";
+import { getCurrentEmployerId } from "./_helpers.js";
 
 export const employerVacanciesSchema = z.object({
   action: z
@@ -15,7 +16,6 @@ export const employerVacanciesSchema = z.object({
       "update",
       "delete",
       "archive",
-      "restore",
       "prolongate",
       "hide",
       "unhide",
@@ -29,7 +29,6 @@ export const employerVacanciesSchema = z.object({
       "available_types",
       "available_types_for_employer",
       "visitors",
-      "available_services",
       "upgrade_list",
       "related",
       "prolongation_info",
@@ -46,6 +45,14 @@ export const employerVacanciesSchema = z.object({
 });
 
 export type EmployerVacanciesInput = z.infer<typeof employerVacanciesSchema>;
+
+async function employerId(input: EmployerVacanciesInput): Promise<string> {
+  return input.employer_id ?? getCurrentEmployerId();
+}
+
+function listQuery(input: EmployerVacanciesInput): Record<string, unknown> {
+  return { ...input.query, ...(input.manager_id ? { manager_id: input.manager_id } : {}) };
+}
 
 async function resolveEmployerAndManager(
   input: EmployerVacanciesInput
@@ -71,43 +78,43 @@ export async function employerVacanciesTool(input: EmployerVacanciesInput): Prom
         return ok(await hhRequest("GET", "/vacancies", { query: input.query }));
       case "get": {
         if (!input.vacancy_id) return fail("vacancy_id is required");
-        return ok(await hhRequest("GET", `/vacancies/${input.vacancy_id}`));
+        return ok(await hhRequest("GET", `/vacancies/${encodeURIComponent(input.vacancy_id)}`));
       }
       case "similar": {
         if (!input.vacancy_id) return fail("vacancy_id is required");
         return ok(
-          await hhRequest("GET", `/vacancies/${input.vacancy_id}/similar_vacancies`, {
+          await hhRequest("GET", `/vacancies/${encodeURIComponent(input.vacancy_id)}/similar_vacancies`, {
             query: input.query,
           })
         );
       }
       case "active_list": {
-        const { employer_id, manager_id } = await resolveEmployerAndManager(input);
+        const employer_id = await employerId(input);
         return ok(
           await hhRequest(
             "GET",
-            `/employers/${employer_id}/managers/${manager_id}/vacancies/active`,
-            { query: input.query }
+            `/employers/${encodeURIComponent(employer_id)}/vacancies/active`,
+            { query: listQuery(input) }
           )
         );
       }
       case "archived_list": {
-        const { employer_id, manager_id } = await resolveEmployerAndManager(input);
+        const employer_id = await employerId(input);
         return ok(
           await hhRequest(
             "GET",
-            `/employers/${employer_id}/managers/${manager_id}/vacancies/archived`,
-            { query: input.query }
+            `/employers/${encodeURIComponent(employer_id)}/vacancies/archived`,
+            { query: listQuery(input) }
           )
         );
       }
       case "hidden_list": {
-        const { employer_id, manager_id } = await resolveEmployerAndManager(input);
+        const employer_id = await employerId(input);
         return ok(
           await hhRequest(
             "GET",
-            `/employers/${employer_id}/managers/${manager_id}/vacancies/hidden`,
-            { query: input.query }
+            `/employers/${encodeURIComponent(employer_id)}/vacancies/hidden`,
+            { query: listQuery(input) }
           )
         );
       }
@@ -117,38 +124,31 @@ export async function employerVacanciesTool(input: EmployerVacanciesInput): Prom
       case "update":
         if (!input.vacancy_id) return fail("vacancy_id is required");
         if (!input.body) return fail("body is required");
-        return ok(await hhRequest("PUT", `/vacancies/${input.vacancy_id}`, { body: input.body }));
+        return ok(await hhRequest("PUT", `/vacancies/${encodeURIComponent(input.vacancy_id)}`, { body: input.body }));
       case "delete":
         if (!input.vacancy_id) return fail("vacancy_id is required");
-        return ok((await hhRequest("DELETE", `/vacancies/${input.vacancy_id}`)) ?? { deleted: true });
+        return ok((await hhRequest("PUT", `/employers/${await employerId(input)}/vacancies/hidden/${encodeURIComponent(input.vacancy_id)}`)) ?? { deleted: true });
       case "archive":
         if (!input.vacancy_id) return fail("vacancy_id is required");
         return ok(
-          (await hhRequest("PUT", `/vacancies/${input.vacancy_id}/archive`)) ?? { archived: true }
-        );
-      case "restore":
-        if (!input.vacancy_id) return fail("vacancy_id is required");
-        return ok(
-          (await hhRequest("POST", `/vacancies/archived/${input.vacancy_id}/restore`)) ?? {
-            restored: true,
-          }
+          (await hhRequest("PUT", `/employers/${await employerId(input)}/vacancies/archived/${encodeURIComponent(input.vacancy_id)}`)) ?? { archived: true }
         );
       case "prolongate":
         if (!input.vacancy_id) return fail("vacancy_id is required");
         return ok(
-          (await hhRequest("POST", `/vacancies/${input.vacancy_id}/prolongate`)) ?? {
+          (await hhRequest("POST", `/vacancies/${encodeURIComponent(input.vacancy_id)}/prolongate`)) ?? {
             prolongated: true,
           }
         );
       case "hide":
         if (!input.vacancy_id) return fail("vacancy_id is required");
         return ok(
-          (await hhRequest("PUT", `/vacancies/${input.vacancy_id}/hidden`)) ?? { hidden: true }
+          (await hhRequest("PUT", `/employers/${await employerId(input)}/vacancies/hidden/${encodeURIComponent(input.vacancy_id)}`)) ?? { hidden: true }
         );
       case "unhide":
         if (!input.vacancy_id) return fail("vacancy_id is required");
         return ok(
-          (await hhRequest("DELETE", `/vacancies/${input.vacancy_id}/hidden`)) ?? {
+          (await hhRequest("DELETE", `/employers/${await employerId(input)}/vacancies/hidden/${encodeURIComponent(input.vacancy_id)}`)) ?? {
             unhidden: true,
           }
         );
@@ -156,7 +156,7 @@ export async function employerVacanciesTool(input: EmployerVacanciesInput): Prom
         return ok(await hhRequest("GET", "/vacancies/drafts", { query: input.query }));
       case "draft_get":
         if (!input.draft_id) return fail("draft_id is required");
-        return ok(await hhRequest("GET", `/vacancies/drafts/${input.draft_id}`));
+        return ok(await hhRequest("GET", `/vacancies/drafts/${encodeURIComponent(input.draft_id)}`));
       case "draft_create":
         if (!input.body) return fail("body is required (draft payload)");
         return ok(await hhRequest("POST", "/vacancies/drafts", { body: input.body }));
@@ -164,63 +164,58 @@ export async function employerVacanciesTool(input: EmployerVacanciesInput): Prom
         if (!input.draft_id) return fail("draft_id is required");
         if (!input.body) return fail("body is required");
         return ok(
-          await hhRequest("PUT", `/vacancies/drafts/${input.draft_id}`, { body: input.body })
+          await hhRequest("PUT", `/vacancies/drafts/${encodeURIComponent(input.draft_id)}`, { body: input.body })
         );
       case "draft_delete":
         if (!input.draft_id) return fail("draft_id is required");
         return ok(
-          (await hhRequest("DELETE", `/vacancies/drafts/${input.draft_id}`)) ?? { deleted: true }
+          (await hhRequest("DELETE", `/vacancies/drafts/${encodeURIComponent(input.draft_id)}`)) ?? { deleted: true }
         );
       case "draft_publish":
         if (!input.draft_id) return fail("draft_id is required");
         return ok(
-          await hhRequest("POST", `/vacancies/drafts/${input.draft_id}/publish`, {
+          await hhRequest("POST", `/vacancies/drafts/${encodeURIComponent(input.draft_id)}/publish`, {
             body: input.body ?? {},
           })
         );
       case "stats":
         if (!input.vacancy_id) return fail("vacancy_id is required");
-        return ok(await hhRequest("GET", `/vacancies/${input.vacancy_id}/stats`));
+        return ok(await hhRequest("GET", `/vacancies/${encodeURIComponent(input.vacancy_id)}/stats`));
       case "available_types":
         return ok(await hhRequest("GET", "/vacancy_conditions"));
       case "available_types_for_employer": {
-        const employer_id = input.employer_id;
-        if (!employer_id) return fail("employer_id is required");
-        return ok(await hhRequest("GET", `/vacancies/available_types/${employer_id}`));
+        const { employer_id, manager_id } = await resolveEmployerAndManager(input);
+        return ok(await hhRequest("GET", `/employers/${encodeURIComponent(employer_id)}/managers/${encodeURIComponent(manager_id)}/vacancies/available_types`));
       }
       case "visitors":
         if (!input.vacancy_id) return fail("vacancy_id is required");
         return ok(
-          await hhRequest("GET", `/vacancies/${input.vacancy_id}/visitors`, { query: input.query })
+          await hhRequest("GET", `/vacancies/${encodeURIComponent(input.vacancy_id)}/visitors`, { query: input.query })
         );
-      case "available_services":
-        if (!input.vacancy_id) return fail("vacancy_id is required");
-        return ok(await hhRequest("GET", `/vacancies/${input.vacancy_id}/available_services`));
       case "upgrade_list":
         if (!input.vacancy_id) return fail("vacancy_id is required");
-        return ok(await hhRequest("GET", `/vacancies/${input.vacancy_id}/upgrades`));
+        return ok(await hhRequest("GET", `/vacancies/${encodeURIComponent(input.vacancy_id)}/upgrades`));
       case "related":
         if (!input.vacancy_id) return fail("vacancy_id is required");
         return ok(
-          await hhRequest("GET", `/vacancies/${input.vacancy_id}/related_vacancies`, {
+          await hhRequest("GET", `/vacancies/${encodeURIComponent(input.vacancy_id)}/related_vacancies`, {
             query: input.query,
           })
         );
       case "prolongation_info":
         if (!input.vacancy_id) return fail("vacancy_id is required");
-        return ok(await hhRequest("GET", `/vacancies/${input.vacancy_id}/prolongate`));
+        return ok(await hhRequest("GET", `/vacancies/${encodeURIComponent(input.vacancy_id)}/prolongate`));
       case "disable_auto_publication":
-        if (!input.vacancy_id) return fail("vacancy_id is required");
+        if (!input.draft_id) return fail("draft_id is required");
         return ok(
-          (await hhRequest("DELETE", `/vacancies/auto_publication/${input.vacancy_id}`)) ?? {
+          (await hhRequest("DELETE", "/vacancies/auto_publication", { query: { draft_id: input.draft_id } })) ?? {
             disabled: true,
           }
         );
       case "draft_duplicates":
-        if (!input.body && !input.query) return fail("query or body with draft fields is required");
+        if (!input.draft_id) return fail("draft_id is required");
         return ok(
-          await hhRequest("POST", "/vacancies/drafts/duplicates", {
-            body: input.body,
+          await hhRequest("GET", `/vacancies/drafts/${encodeURIComponent(input.draft_id)}/duplicates`, {
             query: input.query,
           })
         );

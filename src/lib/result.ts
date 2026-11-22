@@ -6,12 +6,16 @@ export function ok(value: unknown, header?: string): ToolContent {
   const text =
     typeof value === "string"
       ? value
-      : (header ? header + "\n" : "") + JSON.stringify(value, null, 2);
+      : (header ? header + "\n" : "") + JSON.stringify(value === undefined ? { success: true } : value, null, 2);
   return { content: [{ type: "text", text }] };
 }
 
 export function fail(message: string): ToolContent {
   return { content: [{ type: "text", text: `Error: ${message}` }], isError: true };
+}
+
+export function compact(value: unknown): ToolContent {
+  return { content: [{ type: "text", text: JSON.stringify(value) }] };
 }
 
 export function failFromError(err: unknown): ToolContent {

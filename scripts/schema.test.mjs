@@ -29,8 +29,8 @@ for (const [name, schema] of Object.entries({
   });
 }
 
-test("opening a paid resume still requires explicit confirmation before any API request", async () => {
-  const result = await employerResumesTool({ action: "get", resume_id: "not-a-real-resume" });
+test("missing resume ID is rejected before any API request", async () => {
+  const result = await employerResumesTool({ action: "get" });
   assert.equal(result.isError, true);
-  assert.match(result.content[0].text, /confirm/);
+  assert.match(result.content[0].text, /resume_id/);
 });

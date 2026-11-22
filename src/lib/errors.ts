@@ -17,10 +17,11 @@ export function describeHhError(err: unknown): string {
     let detail = "";
     if (err.body && typeof err.body === "object") {
       const b = err.body as { description?: string; errors?: unknown; detail?: unknown };
-      if (b.description) detail = b.description;
-      else if (b.errors) detail = JSON.stringify(b.errors);
-      else if (b.detail) detail = JSON.stringify(b.detail);
-      else detail = JSON.stringify(b).slice(0, 400);
+      const parts: string[] = [];
+      if (b.description) parts.push(b.description);
+      if (b.errors) parts.push(JSON.stringify(b.errors));
+      if (b.detail) parts.push(JSON.stringify(b.detail));
+      detail = (parts.length ? parts.join(" | ") : JSON.stringify(b)).slice(0, 1000);
     }
     return `hh ${err.endpoint} → HTTP ${err.status}: ${err.message}${detail ? ` | ${detail}` : ""}`;
   }

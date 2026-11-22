@@ -137,6 +137,11 @@ export function getAccessToken(): string | null {
   return state.accessToken;
 }
 
+/** Invalidates temporary continuations on account replacement or disconnect. */
+export function getAuthRevision(): number {
+  return authGeneration;
+}
+
 export function hasRefreshToken(): boolean {
   return !!state.refreshToken;
 }

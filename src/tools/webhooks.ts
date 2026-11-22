@@ -13,7 +13,7 @@ export const webhooksSchema = z.object({
     .record(z.string(), z.unknown())
     .optional()
     .describe(
-      "Subscribe payload: { webhook_event: 'NEW_NEGOTIATION'|'NEGOTIATION_FEEDBACK'|…, url, employer_id?, vacancy_id?, secret_key }"
+      'Subscribe payload: { url: "https://example.com/hh", actions: [{ type: "NEW_NEGOTIATION_VACANCY", settings: { vacancies: ["123"] } }] }. Для update можно передать только изменяемые поля; actions заменяет весь список.'
     ),
 });
 
@@ -25,20 +25,21 @@ export async function webhooksTool(input: WebhooksInput): Promise<ToolContent> {
       case "list":
         return ok(await hhRequest("GET", "/webhook/subscriptions"));
       case "subscribe":
-        if (!input.body) return fail("body is required (webhook_event + url + secret_key)");
+        if (!input.body?.url || !Array.isArray(input.body.actions) || !input.body.actions.length)
+          return fail("body.url and nonempty body.actions are required (HH webhook subscription)");
         return ok(await hhRequest("POST", "/webhook/subscriptions", { body: input.body }));
       case "update":
         if (!input.subscription_id) return fail("subscription_id is required");
         if (!input.body) return fail("body is required");
         return ok(
-          await hhRequest("PUT", `/webhook/subscriptions/${input.subscription_id}`, {
+          await hhRequest("PUT", `/webhook/subscriptions/${encodeURIComponent(input.subscription_id)}`, {
             body: input.body,
           })
         );
       case "unsubscribe":
         if (!input.subscription_id) return fail("subscription_id is required");
         return ok(
-          (await hhRequest("DELETE", `/webhook/subscriptions/${input.subscription_id}`)) ?? {
+          (await hhRequest("DELETE", `/webhook/subscriptions/${encodeURIComponent(input.subscription_id)}`)) ?? {
             unsubscribed: true,
           }
         );

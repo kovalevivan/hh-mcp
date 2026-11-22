@@ -9,11 +9,10 @@ export const suggestsSchema = z.object({
       "professional_roles",
       "positions",
       "companies",
-      "organizations",
       "skill_set",
       "fields_of_study",
       "vacancy_search_keyword",
-      "registered_companies",
+      "area_leaves",
       "areas_leaves",
       "educational_institutions",
     ])
@@ -30,12 +29,11 @@ const SUGGEST_PATHS: Record<SuggestsInput["action"], string> = {
   professional_roles: "/suggests/professional_roles",
   positions: "/suggests/positions",
   companies: "/suggests/companies",
-  organizations: "/suggests/organizations",
   skill_set: "/suggests/skill_set",
   fields_of_study: "/suggests/fields_of_study",
   vacancy_search_keyword: "/suggests/vacancy_search_keyword",
-  registered_companies: "/suggests/registered_companies",
-  areas_leaves: "/suggests/areas_leaves",
+  area_leaves: "/suggests/area_leaves",
+  areas_leaves: "/suggests/area_leaves",
   educational_institutions: "/suggests/educational_institutions",
 };
 
@@ -43,7 +41,7 @@ export async function suggestsTool(input: SuggestsInput): Promise<ToolContent> {
   try {
     if (!input.text || input.text.length < 1) return fail("text is required");
     const path = SUGGEST_PATHS[input.action];
-    if (!path) return fail(`unknown action: ${input.action}`);
+    if (!path) return fail(`unknown action: ${encodeURIComponent(input.action)}`);
     const query: Record<string, unknown> = { text: input.text };
     if (input.area_id) query.area = input.area_id;
     if (input.locale) query.locale = input.locale;
