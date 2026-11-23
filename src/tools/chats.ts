@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { hhRequest } from "../client/hh.js";
 import { compact, fail, failFromError, type ToolContent } from "../lib/result.js";
+import { accountScope, currentEmployer, readVacancy, requireVacancyEmployer, employerFailure } from "../employer/scope.js";
 
 const id = z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/);
 const text = z.string().min(1).max(20000).refine((value) => value.trim().length > 0);
@@ -48,6 +49,7 @@ interface ChatState {
   type: string;
   chat_states: { write_message_state: { allowed: boolean; reason?: string | null } };
 }
+interface ChatList { items: unknown[]; found: number; page: number; pages: number; per_page: number }
 
 /** HH owns delivery idempotency; no generated key or automatic fallback can duplicate a message. */
 export function createChatTools(request: typeof hhRequest) {
@@ -57,16 +59,26 @@ export function createChatTools(request: typeof hhRequest) {
         const input = chatsSchema.parse(raw);
         const scope = { host: input.host, locale: input.locale };
         switch (input.action) {
-          case "list":
-            return compact(await request("GET", "/common/chats", { query: {
+          case "list": {
+            const profile = await currentEmployer(request);
+            for (const vacancyId of input.vacancy_ids ?? []) {
+              requireVacancyEmployer(profile, await readVacancy(request, vacancyId));
+            }
+            const response = await request<ChatList>("GET", "/common/chats", { query: {
               ...scope, page: input.page ?? 0, per_page: input.per_page ?? 10,
               filter_unread: input.filter_unread,
               filter_has_text_message: input.filter_has_text_message,
               vacancy_status: input.vacancy_status,
               filter_with_vacancy_ids: input.vacancy_ids ? `[${input.vacancy_ids.join(",")}]` : undefined,
-            } }));
-          case "unread":
-            return compact(await request("GET", "/common/chats/counters/unread", { query: scope }));
+            } });
+            return compact({ ...response, account: accountScope(profile),
+              diagnostic_note: "Пустой список относится к подключённому работодателю и текущему менеджеру HH. Он не доказывает отсутствие откликов, переписки в другом кабинете или ограничение тарифа. Для откликов используйте hh_recruitment collections/applications.",
+            });
+          }
+          case "unread": {
+            const profile = await currentEmployer(request);
+            return compact({ ...await request<{ unread_chats_count: string }>("GET", "/common/chats/counters/unread", { query: scope }), account: accountScope(profile) });
+          }
           case "participants":
           case "messages": {
             if (!input.chat_id) return fail("Укажите chat_id из списка чатов HH.");
@@ -78,7 +90,7 @@ export function createChatTools(request: typeof hhRequest) {
           }
         }
       } catch (error) {
-        return failFromError(error);
+        return employerFailure(error);
       }
     },
     async start(raw: z.input<typeof chatStartSchema>): Promise<ToolContent> {

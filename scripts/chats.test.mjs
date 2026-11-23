@@ -24,6 +24,8 @@ function fixture(options = {}) {
   const request = async (method, path, params) => {
     calls.push({ method, path, params });
     if (options.error) throw options.error;
+    if (path === "/me") return { id: "manager", employer: { id: "1", name: "Клиника" } };
+    if (path.startsWith("/vacancies/")) return { id: path.split("/").at(-1), name: "Вакансия", employer: { id: "1", name: "Клиника" } };
     if (method === "POST") {
       if (options.sendError) throw options.sendError;
       return { id: "message-1" };
@@ -132,10 +134,12 @@ test("all browsing actions are GET-only and retain paging, filters and large str
   await tools.read({ action: "participants", chat_id: "123" });
   await tools.read({ action: "unread" });
   assert.ok(calls.every(call => call.method === "GET"));
-  assert.equal(calls[0].params.query.filter_with_vacancy_ids, "[99999999999999999999,2]");
-  assert.equal(calls[0].params.query.page, 2);
-  assert.equal(calls[1].params.query.start_message_id, "99");
-  assert.equal(calls[1].params.query.order, "prev");
+  const list = calls.find(call => call.path === "/common/chats");
+  const messages = calls.find(call => call.path.endsWith("/messages"));
+  assert.equal(list.params.query.filter_with_vacancy_ids, "[99999999999999999999,2]");
+  assert.equal(list.params.query.page, 2);
+  assert.equal(messages.params.query.start_message_id, "99");
+  assert.equal(messages.params.query.order, "prev");
 });
 
 test("read validation rejects missing chat, unsupported actions and excessive pages", async () => {
