@@ -1,0 +1,40 @@
+{
+  "source": "https://api.hh.ru/openapi/specification/public",
+  "capturedAt": "2026-11-22",
+  "operationId": "chat-message-post",
+  "contentType": "application/json",
+  "message": {
+    "additionalProperties": false,
+    "properties": {
+      "idempotency_key": {
+        "description": "Уникальный ключ для каждого сообщения в формате UUID",
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        "title": "Уникальный ключ для каждого сообщения в формате UUID",
+        "type": "string"
+      },
+      "is_automated": {
+        "description": "Признак, указывающий, что сообщение создано автоматически (например, с помощью AI)",
+        "nullable": true,
+        "type": "boolean"
+      },
+      "reply_to_message_id": {
+        "description": "Идентификатор сообщения, на которое отправляется ответ.\n\nБез этого параметра сообщение отправляется как обычное\n",
+        "minLength": 1,
+        "nullable": true,
+        "type": "string"
+      },
+      "text": {
+        "description": "Текст сообщения",
+        "maxLength": 20000,
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "text",
+      "idempotency_key"
+    ],
+    "title": "Текст сообщения",
+    "type": "object"
+  }
+}

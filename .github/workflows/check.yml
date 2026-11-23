@@ -1,0 +1,26 @@
+name: Check
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx tsc --noEmit
+      - run: node --import tsx --test scripts/*.test.mjs
+      - run: npm run build:bundle
+      - name: Check HTTP transport
+        run: |
+          export MCP_AUTH_TOKEN="$(openssl rand -hex 32)"
+          node dist/bundle.cjs --http &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3400/health >/dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/smoke.mjs

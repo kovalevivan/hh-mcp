@@ -16,7 +16,7 @@ export const salarySchema = z.object({
     ),
   area_id: z.string().optional().describe("регион для evaluation (обязателен)"),
   query: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .optional()
     .describe(
       "Для evaluation: professional_role / employee_level / industry / education / experience и др. (см. /salary_statistics/dictionaries/*)"
@@ -31,7 +31,7 @@ export async function salaryTool(input: SalaryInput): Promise<ToolContent> {
       case "evaluation": {
         if (!input.area_id) return fail("area_id is required for evaluation");
         return ok(
-          await hhRequest("GET", `/salary_statistics/paid/salary_evaluation/${input.area_id}`, {
+          await hhRequest("GET", `/salary_statistics/paid/salary_evaluation/${encodeURIComponent(input.area_id)}`, {
             query: input.query,
           })
         );
