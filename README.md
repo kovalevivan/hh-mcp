@@ -19,7 +19,8 @@ MCP-сервер для HeadHunter API (hh.kz / hh.ru), сфокусирован
 | `hh_employer_negotiations` | employer OAuth | **`invite`** (приглашение кандидата на вакансию), `collections`, `list`, `get`, `mark_read`, `messages_list/send`, `history`, `move_to_collection`/`change_action`, `view`, `templates_list`/`message_template_get`/`mail_templates_list`/`mail_template_update`, `preference_order_get/set`, `statistics`/`statistics_manager`, `active_topics`, `ignore_list`, `candidate_test_solution`/`test_results` |
 | `hh_employer_resumes` | employer OAuth (paid) | `search`, `get` (профессиональные данные без запроса контактов; длинный текст — частями), `negotiations_history`, **saved searches CRUD** (`list/get/create/update/delete/move_manager`), **applicant comments CRUD** (`list/add/update/delete` — заметки команды о кандидате), `mine_invitations`, `available_resume_search_criteria` |
 | `hh_chats` | employer OAuth | Актуальный API: список чатов, история сообщений, участники, счётчик непрочитанных. Только чтение |
-| `hh_recruitment` | employer OAuth | Подключённый работодатель, вакансии, коллекции и список откликов, отдельный отклик. Только чтение, `resume_id` для списка не требуется |
+| `hh_recruitment` | employer OAuth | Подключённый работодатель и вакансии. Только чтение |
+| `hh_applications` | employer OAuth | Коллекции и список откликов, отдельный отклик. `vacancy_id` обязателен для каждого действия; `resume_id` для списка не требуется |
 | `hh_chat_start` | employer OAuth | Создать/получить чат по резюме без первого сообщения. Требует подтверждения |
 | `hh_chat_send` | employer OAuth | Отправить согласованный текст после проверки получателя и доступности переписки. Требует подтверждения |
 | `hh_webhooks` | employer OAuth | `list`, `subscribe`, `update`, `unsubscribe` — real-time события (NEW_NEGOTIATION, NEGOTIATION_FEEDBACK и др.). Требует публичный HTTPS-URL приёмника. |
@@ -161,11 +162,13 @@ hh_salary action=evaluation area_id=160 query={"professional_role":["24"],"emplo
 Кабинет в браузере пользователя может относиться к другому работодателю.
 
 `hh_recruitment action=vacancies` перечисляет вакансии подключённого работодателя.
-Для откликов вызовите `collections vacancy_id=...`, затем
-`applications vacancy_id=... collection=... page=0 per_page=10`, сохраняя
-пагинацию ответа. Инструмент возвращает ID откликов и резюме; заранее знать
-`resume_id` не требуется. Карточка одного отклика доступна через `application`
-с `vacancy_id` и `topic_id`. Контакты и ссылки их открытия в выдачу не включаются.
+Для откликов вызовите `hh_applications action=collections vacancy_id=...`, затем
+`hh_applications action=list vacancy_id=... collection=... page=0 per_page=10`.
+Сохраняйте пагинацию ответа. Инструмент возвращает ID откликов и резюме; заранее
+знать `resume_id` не требуется. Карточка одного отклика доступна через
+`hh_applications action=get` с `vacancy_id` и `topic_id`. `vacancy_id` обязателен
+в JSON-схеме каждого вызова инструмента откликов. Контакты и ссылки их открытия
+в выдачу не включаются.
 
 Отклики и чаты с фильтром по вакансии проверяют совпадение работодателя.
 При несовпадении возвращается `HH_EMPLOYER_MISMATCH` с обоими работодателями,
@@ -226,6 +229,10 @@ endpoints:
 - Авто-генерация типов из `https://api.hh.ru/openapi/specification/public`.
 
 ## Changelog
+
+**v0.2.2** — отклики вынесены в отдельный `hh_applications` с обязательным
+`vacancy_id` в MCP-схеме каждого действия. Диагностика чужого работодателя
+явно останавливает дальнейшие попытки чтения. 14 инструментов.
 
 **v0.2.1** — чтение вакансий и откликов отдельным инструментом, проверка
 работодателя вакансии и явная диагностика несовпадения общего HH-аккаунта.

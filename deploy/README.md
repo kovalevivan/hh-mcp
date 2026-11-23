@@ -28,7 +28,7 @@ The MCP key cannot use administrative endpoints.
 3. From `deploy`, validate with `docker compose config --quiet` and run
    `docker compose up -d --no-deps --wait hh-mcp` after building the image.
    Do not restart LibreChat, databases or the gateway.
-4. Check `/health` and authenticated `tools/list`: version 0.2.1 exposes 13 tools.
+4. Check `/health` and authenticated `tools/list`: version 0.2.2 exposes 14 tools.
    Run the MCP smoke test with `MCP_URL` and `MCP_TOKEN_FILE` pointing to private
    configuration. Live verification uses GET-only HH calls.
 5. Reinitialize the `headhunter` MCP connection in LibreChat to refresh the tool
@@ -41,7 +41,8 @@ retains the pinned Node runtime while avoiding an application-wide rebuild.
 
 ## Chat permissions
 
-Bind read-only `hh_recruitment_mcp_headhunter` as well as
+Bind read-only `hh_recruitment_mcp_headhunter` and
+`hh_applications_mcp_headhunter` as well as
 `hh_chats_mcp_headhunter`, `hh_chat_start_mcp_headhunter` and
 `hh_chat_send_mcp_headhunter` to the recruitment agent. Preserve its existing
 resume tools, instructions and ACLs. Add the two write tools to the host's

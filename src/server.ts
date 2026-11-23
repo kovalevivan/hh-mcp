@@ -23,10 +23,10 @@ import { failFromError, type ToolContent } from "./lib/result.js";
 import type { ResumeDetails } from "./resumes/details.js";
 import { hhRequest } from "./client/hh.js";
 import { createChatTools, chatsSchema, chatStartSchema, chatSendSchema } from "./tools/chats.js";
-import { createRecruitmentTool, recruitmentSchema } from "./tools/recruitment.js";
+import { createRecruitmentTool, recruitmentCatalogSchema, applicationsSchema, createApplicationsTool } from "./tools/recruitment.js";
 
 export const SERVER_NAME = "hh-mcp";
-export const SERVER_VERSION = "0.2.1";
+export const SERVER_VERSION = "0.2.2";
 
 export function createServer(): McpServer {
   return new McpServer({
@@ -67,10 +67,17 @@ export function registerTools(server: McpServer, options?: { resumeDetails: Resu
   const chats = createChatTools(hhRequest);
   server.tool(
     "hh_recruitment",
-    "Вакансии и отклики работодателя — только чтение. context показывает подключённого работодателя/менеджера; vacancies — его вакансии с пагинацией; vacancy — точное название, описание, работодатель и проверка принадлежности; collections — доступные коллекции откликов по vacancy_id; applications — список откликов по vacancy_id+collection с resume.id и пагинацией; application — карточка отклика по vacancy_id+topic_id. Для массового списка откликов НЕ нужен resume_id. Начинай работу по вакансии с vacancy: если работодатель не совпадает, явно сообщи о неверном подключении, не называй это ограничением тарифа и не заменяй разбор откликов проактивным поиском. Пустые чаты не означают отсутствие откликов. Не отмечает прочитанным, не отправляет и не меняет статусы.",
-    recruitmentSchema.shape,
+    "Контекст работодателя и вакансии — только чтение. context показывает подключённого работодателя/менеджера; vacancies — его вакансии с пагинацией; vacancy — точное название, описание, работодатель и проверка принадлежности (требуется vacancy_id). Для откликов есть отдельный hh_applications. Начинай работу по вакансии с vacancy: при belongs_to_connected_employer=false СРАЗУ сообщи о неверном подключении и остановись, не вызывай другие методы до переподключения. Не называй это ограничением тарифа и не заменяй разбор откликов проактивным поиском. Пустые чаты не означают отсутствие откликов.",
+    recruitmentCatalogSchema.shape,
     { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     wrap("hh_recruitment", createRecruitmentTool(hhRequest)),
+  );
+  server.tool(
+    "hh_applications",
+    "Отклики работодателя — только чтение. vacancy_id ОБЯЗАТЕЛЕН для каждого вызова. collections — коллекции откликов по вакансии; list — список по vacancy_id+collection с resume.id и пагинацией; get — карточка по vacancy_id+topic_id. Для списка НЕ нужен resume_id. Сначала hh_recruitment vacancy: если работодатель не совпадает, остановись до переподключения. Не открывает контакты, не отмечает прочитанным, не отправляет и не меняет статусы. При ошибке аргументов не повторяй тот же неполный вызов.",
+    applicationsSchema.shape,
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+    wrap("hh_applications", createApplicationsTool(hhRequest)),
   );
   server.tool(
     "hh_chats",

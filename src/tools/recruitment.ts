@@ -16,6 +16,19 @@ export const recruitmentSchema = z.object({
   per_page: z.number().int().min(1).max(50).optional(),
   status: z.literal("active").optional(),
 }).strict();
+export const recruitmentCatalogSchema = recruitmentSchema.pick({
+  action: true, vacancy_id: true, state: true, page: true, per_page: true,
+}).extend({ action: z.enum(["context", "vacancies", "vacancy"]) });
+
+export const applicationsSchema = z.object({
+  action: z.enum(["collections", "list", "get"]),
+  vacancy_id: id.describe("ОБЯЗАТЕЛЬНО: ID вакансии для каждого действия. Возьмите из hh_recruitment vacancy/vacancies или ссылки пользователя"),
+  collection: id.optional().describe("ОБЯЗАТЕЛЬНО для action=list: ID коллекции из action=collections"),
+  topic_id: id.optional().describe("ОБЯЗАТЕЛЬНО для action=get: ID отклика из action=list"),
+  page: z.number().int().min(0).optional(),
+  per_page: z.number().int().min(1).max(50).optional(),
+  status: z.literal("active").optional(),
+}).strict();
 
 interface Page<T> { items: T[]; found?: number; page?: number; pages?: number; per_page?: number }
 interface Application {
@@ -59,10 +72,12 @@ export function createRecruitmentTool(request: typeof hhRequest) {
       const vacancy = await readVacancy(request, input.vacancy_id!);
       if (input.action === "vacancy") return compact({ ...vacancyCard(vacancy), account,
         belongs_to_connected_employer: vacancy.employer.id === profile.employer.id,
+        private_access_blocked: vacancy.employer.id !== profile.employer.id,
+        next_actions: vacancy.employer.id === profile.employer.id ? [{ tool: "hh_applications", arguments: { action: "collections", vacancy_id: vacancy.id } }] : [],
         description: vacancy.description, experience: vacancy.experience, employment: vacancy.employment, schedule: vacancy.schedule,
         access_note: vacancy.employer.id === profile.employer.id
           ? "Работодатель совпадает; доступ к откликам дополнительно проверяет HH для текущего менеджера."
-          : "Это вакансия другого работодателя. Публичное описание доступно, её отклики и переписка требуют соответствующего подключения HH.",
+          : "СТОП: это вакансия другого работодателя. Публичное описание доступно, её отклики и переписка требуют соответствующего подключения HH. Не повторяйте попытки чтения откликов/чатов до смены подключения.",
       });
       requireVacancyEmployer(profile, vacancy);
       if (input.action === "collections") return compact({ account, vacancy: vacancyCard(vacancy),
@@ -77,6 +92,20 @@ export function createRecruitmentTool(request: typeof hhRequest) {
       const application = await request<Application>("GET", `/negotiations/${encodeURIComponent(input.topic_id!)}`);
       if (application.vacancy?.id !== vacancy.id) return fail("Отклик не относится к указанной вакансии. Проверьте vacancy_id и topic_id.");
       return compact({ account, vacancy: vacancyCard(vacancy), application: applicationCard(application) });
+    } catch (error) {
+      return employerFailure(error);
+    }
+  };
+}
+
+export function createApplicationsTool(request: typeof hhRequest) {
+  const recruitment = createRecruitmentTool(request);
+  return async (raw: z.input<typeof applicationsSchema>): Promise<ToolContent> => {
+    try {
+      const input = applicationsSchema.parse(raw);
+      return recruitment({ ...input,
+        action: input.action === "list" ? "applications" : input.action === "get" ? "application" : "collections",
+      });
     } catch (error) {
       return employerFailure(error);
     }

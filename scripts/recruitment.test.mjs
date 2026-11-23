@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createRecruitmentTool } from "../src/tools/recruitment.ts";
+import { createRecruitmentTool, createApplicationsTool, applicationsSchema } from "../src/tools/recruitment.ts";
 import { createChatTools } from "../src/tools/chats.ts";
 import { HhApiError } from "../src/lib/errors.ts";
 import { registerTools } from "../src/server.ts";
@@ -25,7 +25,7 @@ function fixture(options = {}) {
     if (path === "/negotiations/topic-1") return { id: "topic-1", vacancy: { id: options.topicVacancy ?? vacancy.id }, resume: { id: "resume-1" } };
     return { found: 0, items: [], page: 0, pages: 1, per_page: 10, unread_chats_count: "0" };
   };
-  return { calls, tool: createRecruitmentTool(request), chats: createChatTools(request) };
+  return { calls, tool: createRecruitmentTool(request), applications: createApplicationsTool(request), chats: createChatTools(request) };
 }
 const body = result => JSON.parse(result.content[0].text);
 
@@ -142,4 +142,25 @@ test("the agent-facing recruitment tool is registered as read-only", () => {
   const tool = definitions.find(args => args[0] === "hh_recruitment");
   assert.equal(tool[3].readOnlyHint, true);
   assert.equal(tool[3].destructiveHint, false);
+  const applications = definitions.find(args => args[0] === "hh_applications");
+  assert.equal(applications[3].readOnlyHint, true);
+  assert.equal(applications[2].vacancy_id.isOptional(), false);
+});
+
+test("application tool requires a vacancy ID for every action before touching HH", async () => {
+  const { applications, calls } = fixture();
+  for (const action of ["collections", "list", "get"]) {
+    assert.equal(applicationsSchema.safeParse({ action }).success, false);
+    assert.equal((await applications({ action })).isError, true);
+  }
+  assert.equal(calls.length, 0);
+});
+
+test("required-ID application tool lists collections and applications through the same employer guard", async () => {
+  const { applications } = fixture();
+  assert.equal(body(await applications({ action: "collections", vacancy_id: vacancy.id })).data.collections[0].id, "response");
+  assert.equal(body(await applications({ action: "list", vacancy_id: vacancy.id, collection: "response" })).items[0].resume.id, "resume-1");
+  assert.equal(body(await applications({ action: "get", vacancy_id: vacancy.id, topic_id: "topic-1" })).application.id, "topic-1");
+  const bad = fixture({ vacancy: { employer: other } });
+  assert.equal(body(await bad.applications({ action: "collections", vacancy_id: vacancy.id })).error.code, "HH_EMPLOYER_MISMATCH");
 });

@@ -72,7 +72,7 @@ export function createChatTools(request: typeof hhRequest) {
               filter_with_vacancy_ids: input.vacancy_ids ? `[${input.vacancy_ids.join(",")}]` : undefined,
             } });
             return compact({ ...response, account: accountScope(profile),
-              diagnostic_note: "Пустой список относится к подключённому работодателю и текущему менеджеру HH. Он не доказывает отсутствие откликов, переписки в другом кабинете или ограничение тарифа. Для откликов используйте hh_recruitment collections/applications.",
+              diagnostic_note: "Пустой список относится к подключённому работодателю и текущему менеджеру HH. Он не доказывает отсутствие откликов, переписки в другом кабинете или ограничение тарифа. Для откликов используйте hh_applications collections/list с обязательным vacancy_id.",
             });
           }
           case "unread": {
